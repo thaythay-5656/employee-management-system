@@ -15,7 +15,15 @@ node_modules/
 # =========================
 # Build folders
 # =========================
-dist/
+dist/New-Item -ItemType File -Path .\backend\.gitkeep
+New-Item -ItemType File -Path .\docker\.gitkeep
+New-Item -ItemType File -Path .\frontend\.gitkeep
+New-Item -ItemType File -Path .\K8s\.gitkeep
+New-Item -ItemType File -Path .\monitoring\.gitkeep
+New-Item -ItemType File -Path .\terraform\.gitkeep
+git add .
+git commit -m "Add placeholder files for empty folder structure"
+git push
 build/
 
 # =========================
