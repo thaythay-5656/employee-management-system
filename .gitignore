@@ -69,3 +69,24 @@ coverage/
 # =========================
 *.tmp
 *.swp
+
+
+# Node
+node_modules/
+
+# MacOS
+__MACOSX/
+.DS_Store
+
+# Frontend generated
+frontend/employee-hub/node_modules/
+
+# ignore the Python virtual environment
+Include/
+Lib/
+Scripts/
+pyvenv.cfg
+
+# ignore Python runtime files
+__pycache__/
+*.pyc
