@@ -1,0 +1,161 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { useState } from "react";
+import { Plus, Check, X } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { toast } from "sonner";
+import { PageHeader } from "@/components/layout/page-header";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useDataStore } from "@/store/data-store";
+import { useAuthStore } from "@/store/auth-store";
+
+export const Route = createFileRoute("/_authenticated/leave")({
+  component: LeavePage,
+});
+
+const schema = z.object({
+  type: z.enum(["vacation", "sick", "emergency", "unpaid"]),
+  startDate: z.string().min(1),
+  endDate: z.string().min(1),
+  reason: z.string().min(3),
+});
+type FormValues = z.infer<typeof schema>;
+
+function LeavePage() {
+  const user = useAuthStore((s) => s.user);
+  const { leaves, employees, addLeave, updateLeaveStatus } = useDataStore();
+  const isEmployee = user?.role === "employee";
+  const myId = user?.employeeId ?? employees[0].id;
+  const list = isEmployee ? leaves.filter((l) => l.employeeId === myId) : leaves;
+
+  const [open, setOpen] = useState(false);
+  const form = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: { type: "vacation" } });
+
+  const onSubmit = (v: FormValues) => {
+    addLeave({ ...v, employeeId: myId });
+    toast.success("Leave request submitted");
+    setOpen(false);
+    form.reset();
+  };
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        title={isEmployee ? "My leave requests" : "Leave management"}
+        description={isEmployee ? "Track your time off and submit new requests." : "Review and approve leave requests."}
+        actions={
+          isEmployee && (
+            <Dialog open={open} onOpenChange={setOpen}>
+              <DialogTrigger asChild>
+                <Button><Plus className="h-4 w-4 mr-1" /> Request leave</Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader><DialogTitle>New leave request</DialogTitle></DialogHeader>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Type</Label>
+                    <Select defaultValue="vacation" onValueChange={(v) => form.setValue("type", v as FormValues["type"])}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="vacation">Vacation</SelectItem>
+                        <SelectItem value="sick">Sick</SelectItem>
+                        <SelectItem value="emergency">Emergency</SelectItem>
+                        <SelectItem value="unpaid">Unpaid</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2"><Label>Start date</Label><Input type="date" {...form.register("startDate")} /></div>
+                    <div className="space-y-2"><Label>End date</Label><Input type="date" {...form.register("endDate")} /></div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Reason</Label>
+                    <Textarea rows={3} {...form.register("reason")} />
+                  </div>
+                  <DialogFooter>
+                    <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+                    <Button type="submit">Submit</Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
+          )
+        }
+      />
+      <div className="glass rounded-xl overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="text-xs uppercase text-muted-foreground bg-muted/30">
+              <tr>
+                {!isEmployee && <th className="text-left px-4 py-3 font-medium">Employee</th>}
+                <th className="text-left px-4 py-3 font-medium">Type</th>
+                <th className="text-left px-4 py-3 font-medium">From</th>
+                <th className="text-left px-4 py-3 font-medium">To</th>
+                <th className="text-left px-4 py-3 font-medium">Reason</th>
+                <th className="text-left px-4 py-3 font-medium">Status</th>
+                {!isEmployee && <th className="text-right px-4 py-3 font-medium">Actions</th>}
+              </tr>
+            </thead>
+            <tbody>
+              {list.map((l) => {
+                const emp = employees.find((e) => e.id === l.employeeId);
+                return (
+                  <tr key={l.id} className="border-t border-border hover:bg-muted/20">
+                    {!isEmployee && <td className="px-4 py-3 font-medium">{emp?.fullName ?? "—"}</td>}
+                    <td className="px-4 py-3 capitalize text-muted-foreground">{l.type}</td>
+                    <td className="px-4 py-3 text-muted-foreground">{l.startDate}</td>
+                    <td className="px-4 py-3 text-muted-foreground">{l.endDate}</td>
+                    <td className="px-4 py-3 text-muted-foreground max-w-xs truncate">{l.reason}</td>
+                    <td className="px-4 py-3">
+                      <Badge
+                        variant={l.status === "approved" ? "default" : l.status === "rejected" ? "destructive" : "secondary"}
+                        className="capitalize"
+                      >
+                        {l.status}
+                      </Badge>
+                    </td>
+                    {!isEmployee && (
+                      <td className="px-4 py-3 text-right">
+                        {l.status === "pending" ? (
+                          <div className="inline-flex gap-1">
+                            <Button size="sm" variant="outline" className="h-7"
+                              onClick={() => { updateLeaveStatus(l.id, "approved"); toast.success("Approved"); }}>
+                              <Check className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button size="sm" variant="outline" className="h-7"
+                              onClick={() => { updateLeaveStatus(l.id, "rejected"); toast.error("Rejected"); }}>
+                              <X className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
+                      </td>
+                    )}
+                  </tr>
+                );
+              })}
+              {list.length === 0 && (
+                <tr><td colSpan={isEmployee ? 5 : 7} className="text-center py-12 text-muted-foreground">No leave requests yet.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
