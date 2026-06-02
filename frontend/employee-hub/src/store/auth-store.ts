@@ -18,9 +18,27 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
       login: (email, password) => {
         const users = useDataStore.getState().users;
-        const found = users.find(
-          (u) => u.email.toLowerCase() === email.toLowerCase() && u.password === password,
+        const employees = useDataStore.getState().employees;
+        const id = email.trim().toLowerCase();
+        let found = users.find(
+          (u) => u.email.toLowerCase() === id && u.password === password,
         );
+        if (!found) {
+          const emp = employees.find(
+            (e) =>
+              (e.username?.toLowerCase() === id || e.email.toLowerCase() === id) &&
+              e.password === password,
+          );
+          if (emp) {
+            found = users.find((u) => u.employeeId === emp.id) ?? {
+              id: `u-${emp.id}`,
+              email: emp.email,
+              password: emp.password ?? password,
+              role: emp.role === "manager" ? "admin" : "employee",
+              employeeId: emp.id,
+            };
+          }
+        }
         if (!found) return { ok: false, error: "Invalid email or password" };
         const { password: _pw, ...safe } = found;
         set({ user: safe, isAuthenticated: true });
