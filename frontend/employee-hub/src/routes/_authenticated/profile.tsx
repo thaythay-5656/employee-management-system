@@ -4,6 +4,13 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useAuthStore } from "@/store/auth-store";
 import { useDataStore } from "@/store/data-store";
 import { toast } from "sonner";
@@ -17,7 +24,22 @@ function ProfilePage() {
   const user = useAuthStore((s) => s.user);
   const { employees, updateEmployee } = useDataStore();
   const me = employees.find((e) => e.id === user?.employeeId) ?? employees[0];
-  const [form, setForm] = useState({ phone: me.phone, address: me.address });
+  const [fn, ...rest] = (me.fullName ?? "").split(" ");
+  const [form, setForm] = useState({
+    firstName: me.firstName ?? fn ?? "",
+    lastName: me.lastName ?? rest.join(" "),
+    password: me.password ?? "",
+    gender: me.gender,
+    dateOfBirth: me.dateOfBirth,
+    phone: me.phone,
+    address: me.address,
+  });
+
+  const onSave = () => {
+    const fullName = `${form.firstName} ${form.lastName}`.trim();
+    updateEmployee(me.id, { ...form, fullName });
+    toast.success("Profile updated");
+  };
 
   return (
     <div className="space-y-6 max-w-3xl">
@@ -31,22 +53,34 @@ function ProfilePage() {
           </Avatar>
           <div>
             <h2 className="text-xl font-semibold">{me.fullName}</h2>
-            <p className="text-sm text-muted-foreground">{me.position} · {me.department}</p>
+            <p className="text-sm text-muted-foreground">@{me.username ?? me.email.split("@")[0]}</p>
           </div>
         </div>
         <div className="grid sm:grid-cols-2 gap-4">
+          <div className="space-y-2"><Label>First name</Label><Input value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} /></div>
+          <div className="space-y-2"><Label>Last name</Label><Input value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })} /></div>
           <div className="space-y-2"><Label>Email</Label><Input value={me.email} disabled /></div>
           <div className="space-y-2"><Label>Phone</Label><Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></div>
+          <div className="space-y-2"><Label>Password</Label><Input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} /></div>
+          <div className="space-y-2">
+            <Label>Gender</Label>
+            <Select value={form.gender} onValueChange={(v) => setForm({ ...form, gender: v as typeof form.gender })}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="male">Male</SelectItem>
+                <SelectItem value="female">Female</SelectItem>
+                <SelectItem value="other">Other</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2"><Label>Date of birth</Label><Input type="date" value={form.dateOfBirth} onChange={(e) => setForm({ ...form, dateOfBirth: e.target.value })} /></div>
           <div className="space-y-2 sm:col-span-2"><Label>Address</Label><Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} /></div>
           <div className="space-y-2"><Label>Position</Label><Input value={me.position} disabled /></div>
-          <div className="space-y-2"><Label>Department</Label><Input value={me.department} disabled /></div>
           <div className="space-y-2"><Label>Join date</Label><Input value={me.joinDate} disabled /></div>
           <div className="space-y-2"><Label>Salary</Label><Input value={`$${me.salary.toLocaleString()}`} disabled /></div>
         </div>
         <div className="mt-6 flex justify-end">
-          <Button onClick={() => { updateEmployee(me.id, form); toast.success("Profile updated"); }}>
-            Save changes
-          </Button>
+          <Button onClick={onSave}>Save changes</Button>
         </div>
       </div>
     </div>

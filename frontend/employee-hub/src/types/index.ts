@@ -11,6 +11,12 @@ export interface User {
 export interface Employee {
   id: string;
   fullName: string;
+  firstName?: string;
+  lastName?: string;
+  username?: string;
+  password?: string;
+  hireDate?: string;
+  role?: "manager" | "employee";
   email: string;
   phone: string;
   address: string;

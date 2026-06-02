@@ -40,16 +40,23 @@ export const Route = createFileRoute("/_authenticated/employees")({
 });
 
 const schema = z.object({
-  fullName: z.string().min(2),
+  firstName: z.string().min(1, "Required"),
+  lastName: z.string().min(1, "Required"),
+  username: z.string().min(2, "Required"),
+  password: z.string().min(4, "Min 4 chars"),
   email: z.string().email(),
   phone: z.string().min(5),
-  position: z.string().min(2),
+  position: z.enum(["HR", "UX/UI Designer", "Software Developer", "Engineering Manager"]),
   department: z.string().min(2),
   salary: z.coerce.number().min(0),
+  hireDate: z.string().min(1, "Required"),
   gender: z.enum(["male", "female", "other"]),
+  role: z.enum(["manager", "employee"]),
   status: z.enum(["active", "inactive", "on-leave"]),
 });
 type FormValues = z.infer<typeof schema>;
+
+const POSITIONS = ["HR", "UX/UI Designer", "Software Developer", "Engineering Manager"] as const;
 
 function EmployeesPage() {
   const { employees, departments, addEmployee, updateEmployee, deleteEmployee } = useDataStore();
@@ -84,29 +91,39 @@ function EmployeesPage() {
 
   const onEdit = (e: Employee) => {
     setEditing(e);
+    const [fn, ...rest] = (e.fullName ?? "").split(" ");
     form.reset({
-      fullName: e.fullName,
+      firstName: e.firstName ?? fn ?? "",
+      lastName: e.lastName ?? rest.join(" "),
+      username: e.username ?? e.email.split("@")[0],
+      password: e.password ?? "",
       email: e.email,
       phone: e.phone,
-      position: e.position,
+      position: (POSITIONS as readonly string[]).includes(e.position)
+        ? (e.position as FormValues["position"])
+        : "Software Developer",
       department: e.department,
       salary: e.salary,
+      hireDate: e.hireDate ?? e.joinDate,
       gender: e.gender,
+      role: e.role ?? "employee",
       status: e.status,
     });
     setOpen(true);
   };
 
   const onSubmit = (values: FormValues) => {
+    const fullName = `${values.firstName} ${values.lastName}`.trim();
     if (editing) {
-      updateEmployee(editing.id, values);
+      updateEmployee(editing.id, { ...values, fullName });
       toast.success("Employee updated");
     } else {
       addEmployee({
         ...values,
+        fullName,
         address: "",
         dateOfBirth: "1990-01-01",
-        joinDate: new Date().toISOString().slice(0, 10),
+        joinDate: values.hireDate,
         emergencyContact: "",
       });
       toast.success("Employee added");
@@ -135,10 +152,22 @@ function EmployeesPage() {
               <DialogHeader>
                 <DialogTitle>{editing ? "Edit employee" : "Add new employee"}</DialogTitle>
               </DialogHeader>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-2 gap-4">
-                <div className="col-span-2 space-y-2">
-                  <Label>Full name</Label>
-                  <Input {...form.register("fullName")} />
+              <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-2 gap-4 max-h-[70vh] overflow-y-auto pr-1">
+                <div className="space-y-2">
+                  <Label>First name</Label>
+                  <Input {...form.register("firstName")} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Last name</Label>
+                  <Input {...form.register("lastName")} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Username</Label>
+                  <Input {...form.register("username")} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Password</Label>
+                  <Input type="password" {...form.register("password")} />
                 </div>
                 <div className="space-y-2">
                   <Label>Email</Label>
@@ -150,7 +179,17 @@ function EmployeesPage() {
                 </div>
                 <div className="space-y-2">
                   <Label>Position</Label>
-                  <Input {...form.register("position")} />
+                  <Select
+                    defaultValue={editing?.position as string | undefined}
+                    onValueChange={(v) => form.setValue("position", v as FormValues["position"])}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+                    <SelectContent>
+                      {POSITIONS.map((p) => (
+                        <SelectItem key={p} value={p}>{p}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
                   <Label>Department</Label>
@@ -171,6 +210,10 @@ function EmployeesPage() {
                   <Input type="number" {...form.register("salary")} />
                 </div>
                 <div className="space-y-2">
+                  <Label>Hire date</Label>
+                  <Input type="date" {...form.register("hireDate")} />
+                </div>
+                <div className="space-y-2">
                   <Label>Gender</Label>
                   <Select
                     defaultValue={editing?.gender ?? "male"}
@@ -181,6 +224,19 @@ function EmployeesPage() {
                       <SelectItem value="male">Male</SelectItem>
                       <SelectItem value="female">Female</SelectItem>
                       <SelectItem value="other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Role</Label>
+                  <Select
+                    defaultValue={editing?.role ?? "employee"}
+                    onValueChange={(v) => form.setValue("role", v as FormValues["role"])}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="manager">Manager</SelectItem>
+                      <SelectItem value="employee">Employee</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
