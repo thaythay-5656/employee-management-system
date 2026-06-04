@@ -24,6 +24,31 @@ class EmployeeSerializer(serializers.ModelSerializer):
         # 3. Create the Employee profile linked to that new user instance row
         employee = Employee.objects.create(user=user, **validated_data)
         return employee
+    
+    def update(self, instance, validated_data):
+        # 1. Pop the nested user data out safely
+        user_data = validated_data.pop('user', None)
+        
+        # 2. Update the User instance manually if data was provided
+        if user_data:
+            user_instance = instance.user
+            
+            # Safely pop the password from inside the IF block
+            password = user_data.pop('password', None)
+            
+            # Update standard user fields (username, email, etc.)
+            for attr, value in user_data.items():
+                setattr(user_instance, attr, value)
+            
+            # Encrypt the password if it was provided
+            if password:
+                user_instance.set_password(password)
+            
+            # Save the user just ONCE here
+            user_instance.save()
+
+        # 3. Update the remaining Employee fields normally
+        return super().update(instance, validated_data)
 
 class DepartmentSerializer(serializers.ModelSerializer):
     class Meta:

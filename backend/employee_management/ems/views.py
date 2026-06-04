@@ -1,6 +1,6 @@
 from django.shortcuts import render
 from django.http import HttpResponse
-from ems.serializer import *
+from .serializer import *
 from .models import *
 from rest_framework import viewsets
 from rest_framework.viewsets import GenericViewSet
@@ -21,27 +21,27 @@ def startproject(request):
 class EmployeeViewSet(viewsets.ModelViewSet):
     queryset = Employee.objects.all()
     serializer_class = EmployeeSerializer
-    permission_classes = [IsAdminUserRole]
+    permission_classes = [IsAuthenticated, IsAdminUserRole]
 
 class DepartmentViewSet(viewsets.ModelViewSet):
     queryset = Department.objects.all()
     serializer_class = DepartmentSerializer
-    permission_classes = [IsAdminUserRole]
+    permission_classes = [IsAuthenticated, IsAdminUserRole]
 
 class PositionViewSet(viewsets.ModelViewSet):
     queryset = Position.objects.all()
     serializer_class = PositionSerializer
-    permission_classes = [IsAdminUserRole]    
+    permission_classes = [IsAuthenticated, IsAdminUserRole]    
 
 class PayrollViewSet(CreateModelMixin, ListModelMixin, GenericViewSet):
     queryset = Payroll.objects.all()
     serializer_class = PayrollSerializer
-    permission_classes = [IsManagerOrAdmin]  
+    permission_classes = [IsAuthenticated, IsManagerOrAdmin]  
 
 class LeaveViewSet(CreateModelMixin, ListModelMixin, UpdateModelMixin, GenericViewSet):
     queryset = Leave.objects.all()
     serializer_class = LeaveSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAuthenticated]
 
     def get_queryset(self):
         user = self.request.user

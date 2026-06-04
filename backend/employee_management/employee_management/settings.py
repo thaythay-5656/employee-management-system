@@ -45,7 +45,8 @@ INSTALLED_APPS = [
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'rest_framework_simplejwt.authentication.JWTAuthentication', # For your frontend/Postman
+        'rest_framework.authentication.SessionAuthentication',       # 👈 REQUIRED for the browser UI!
     ],
 }
 
@@ -144,5 +145,3 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
-
-

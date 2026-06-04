@@ -68,6 +68,7 @@ coverage/
 # Misc
 # =========================
 *.tmp
+<<<<<<< HEAD
 *.swp
 
 
@@ -89,4 +90,8 @@ pyvenv.cfg
 
 # ignore Python runtime files
 __pycache__/
-*.pyc
+*.py
+*.swp
+
+*.sqlite3
+db.sqlite3

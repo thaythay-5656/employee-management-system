@@ -16,6 +16,7 @@ router.register(r'attendance', views.AttendanceViewSet, basename='attendance')
 urlpatterns = [
     path('api/', include(router.urls)),
     path('', views.startproject),
+    path('api-auth/', include('rest_framework.urls')),
     path('api/login/', LoginView.as_view(), name='login'),
     path('api/logout/', TokenBlacklistView.as_view(), name='logout'),
 ]
