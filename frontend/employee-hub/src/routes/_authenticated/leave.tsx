@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { Plus, Check, X } from "lucide-react";
+import { Plus, Check, X, MessageSquare, XCircle } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -22,6 +22,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useDataStore } from "@/store/data-store";
 import { useAuthStore } from "@/store/auth-store";
+import { Textarea as Ta } from "@/components/ui/textarea";
 
 export const Route = createFileRoute("/_authenticated/leave")({
   component: LeavePage,
@@ -37,19 +38,40 @@ type FormValues = z.infer<typeof schema>;
 
 function LeavePage() {
   const user = useAuthStore((s) => s.user);
-  const { leaves, employees, addLeave, updateLeaveStatus } = useDataStore();
+  const { leaves, employees, addLeave, updateLeaveStatus, cancelLeave, logAudit, addNotification } = useDataStore();
   const isEmployee = user?.role === "employee";
+  const isManager = user?.role === "manager";
+  const me = employees.find((e) => e.id === user?.employeeId);
   const myId = user?.employeeId ?? employees[0].id;
-  const list = isEmployee ? leaves.filter((l) => l.employeeId === myId) : leaves;
+  let list = leaves;
+  if (isEmployee) list = leaves.filter((l) => l.employeeId === myId);
+  else if (isManager && me) {
+    const teamIds = new Set(employees.filter((e) => e.department === me.department).map((e) => e.id));
+    list = leaves.filter((l) => teamIds.has(l.employeeId));
+  }
 
   const [open, setOpen] = useState(false);
+  const [commentFor, setCommentFor] = useState<string | null>(null);
+  const [comment, setComment] = useState("");
+  const [pendingStatus, setPendingStatus] = useState<"approved" | "rejected">("approved");
   const form = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: { type: "vacation" } });
 
   const onSubmit = (v: FormValues) => {
     addLeave({ ...v, employeeId: myId });
+    addNotification({ title: "New leave request", body: `${me?.fullName ?? "Employee"} requested ${v.type} leave.`, forRole: "admin" });
+    logAudit(user?.email ?? "system", "Submitted leave request", v.type);
     toast.success("Leave request submitted");
     setOpen(false);
     form.reset();
+  };
+
+  const submitDecision = () => {
+    if (!commentFor) return;
+    updateLeaveStatus(commentFor, pendingStatus, comment || undefined, user?.email);
+    logAudit(user?.email ?? "system", pendingStatus === "approved" ? "Approved leave" : "Rejected leave", commentFor);
+    pendingStatus === "approved" ? toast.success("Approved") : toast.error("Rejected");
+    setCommentFor(null);
+    setComment("");
   };
 
   return (
@@ -133,18 +155,23 @@ function LeavePage() {
                         {l.status === "pending" ? (
                           <div className="inline-flex gap-1">
                             <Button size="sm" variant="outline" className="h-7"
-                              onClick={() => { updateLeaveStatus(l.id, "approved"); toast.success("Approved"); }}>
+                              onClick={() => { setCommentFor(l.id); setPendingStatus("approved"); setComment(""); }}>
                               <Check className="h-3.5 w-3.5" />
                             </Button>
                             <Button size="sm" variant="outline" className="h-7"
-                              onClick={() => { updateLeaveStatus(l.id, "rejected"); toast.error("Rejected"); }}>
+                              onClick={() => { setCommentFor(l.id); setPendingStatus("rejected"); setComment(""); }}>
                               <X className="h-3.5 w-3.5" />
                             </Button>
                           </div>
                         ) : (
-                          <span className="text-xs text-muted-foreground">—</span>
+                          <span className="text-xs text-muted-foreground inline-flex items-center gap-1">
+                            {l.comment && <MessageSquare className="h-3 w-3" />} {l.approvedBy ?? "—"}
+                          </span>
                         )}
                       </td>
+                    )}
+                    {isEmployee && (
+                      <></>
                     )}
                   </tr>
                 );
@@ -156,6 +183,32 @@ function LeavePage() {
           </table>
         </div>
       </div>
+      {isEmployee && (
+        <div className="text-xs text-muted-foreground">
+          Tip: pending requests can be cancelled. <Button variant="link" className="h-auto p-0 text-xs"
+            onClick={() => {
+              const pending = list.find((l) => l.status === "pending");
+              if (pending) { cancelLeave(pending.id); toast.success("Cancelled"); }
+              else toast("No pending request");
+            }}>
+            <XCircle className="h-3 w-3 mr-1" /> Cancel last pending
+          </Button>
+        </div>
+      )}
+
+      <Dialog open={!!commentFor} onOpenChange={(o) => !o && setCommentFor(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>{pendingStatus === "approved" ? "Approve leave" : "Reject leave"}</DialogTitle></DialogHeader>
+          <div className="space-y-2">
+            <Label>Comment (optional)</Label>
+            <Ta rows={3} value={comment} onChange={(e) => setComment(e.target.value)} />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCommentFor(null)}>Cancel</Button>
+            <Button onClick={submitDecision}>Confirm</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
