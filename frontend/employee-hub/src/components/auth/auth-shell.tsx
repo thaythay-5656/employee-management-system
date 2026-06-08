@@ -29,7 +29,7 @@ export function AuthShell({ title, subtitle, children }: Props) {
           <div className="flex gap-2 pt-2">
             <div className="h-1 w-12 rounded-full bg-primary" />
             <div className="h-1 w-6 rounded-full bg-muted" />
-            <div className="h-1 w-6 rounded-full bg-muted" 
+            <div className="h-1 w-6 rounded-full bg-muted" />
           </div>
         </div>
         <div className="relative text-xs text-muted-foreground">
