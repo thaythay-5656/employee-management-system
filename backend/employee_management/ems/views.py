@@ -9,6 +9,7 @@ from .permissions import *
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
+from django.shortcuts import get_object_or_404
 
 # Create your views here.
 
@@ -19,9 +20,58 @@ def startproject(request):
 
 
 class EmployeeViewSet(viewsets.ModelViewSet):
-    queryset = Employee.objects.all()
-    serializer_class = EmployeeSerializer
-    permission_classes = [IsAuthenticated, IsAdminUserRole]
+
+    def _get_role(self):
+        """Safe helper — returns role string or None."""
+        user = self.request.user
+        if user and user.is_authenticated and hasattr(user, 'employee'):
+            return user.employee.role
+        return None
+
+    def get_permissions(self):
+        role = self._get_role()
+
+        if role == 'admin':
+            return [IsAuthenticated(), IsManagerOrAdmin()]
+
+        if role == 'manager':
+            return [IsAuthenticated(), IsManagerOrAdmin()]
+
+        if role == 'employee':
+            return [IsAuthenticated(), IsSelfEmployee()]
+
+        # Unauthenticated or no employee profile — block cleanly
+        return [IsAuthenticated()]
+
+    def get_queryset(self):
+        role = self._get_role()
+
+        if role == 'admin':
+            return Employee.objects.all()
+
+        if role == 'manager':
+            return Employee.objects.filter(role='employee')
+
+        if role == 'employee':
+            return Employee.objects.filter(user=self.request.user)
+
+        return Employee.objects.none()
+
+    def get_serializer_class(self):
+        role = self._get_role()
+
+        if role == 'manager' and self.action in ['update', 'partial_update']:
+            return ManagerUpdateEmployeeSerializer
+
+        if role == 'employee' and self.action in ['update', 'partial_update']:
+            return SelfUpdateEmployeeSerializer
+
+        return EmployeeSerializer
+    
+    def get_object(self):
+        obj = get_object_or_404(Employee, pk=self.kwargs['pk'])
+        self.check_object_permissions(self.request, obj)  # ← triggers has_object_permission
+        return obj
 
 class DepartmentViewSet(viewsets.ModelViewSet):
     queryset = Department.objects.all()
@@ -41,7 +91,7 @@ class PayrollViewSet(CreateModelMixin, ListModelMixin, GenericViewSet):
 class LeaveViewSet(CreateModelMixin, ListModelMixin, UpdateModelMixin, GenericViewSet):
     queryset = Leave.objects.all()
     serializer_class = LeaveSerializer
-    permission_classes = [IsAuthenticated, IsAuthenticated]
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         user = self.request.user

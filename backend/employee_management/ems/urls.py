@@ -16,7 +16,7 @@ router.register(r'leave', views.LeaveViewSet, basename='leave')
 router.register(r'attendance', views.AttendanceViewSet, basename='attendance')
 
 urlpatterns = [
-    path('api/', include(router.urls)),
+    path('api/', include(router.urls)), 
     path('', views.startproject),
     path('api-auth/', include('rest_framework.urls')),
     path('api/login/', LoginView.as_view(), name='login'),
