@@ -49,6 +49,24 @@ class EmployeeSerializer(serializers.ModelSerializer):
 
         # 3. Update the remaining Employee fields normally
         return super().update(instance, validated_data)
+    
+class SelfUpdateEmployeeSerializer(serializers.ModelSerializer):
+    user = UserSerializer()
+    """Serializer for employees updating their own record — restricted fields are read-only."""
+
+    class Meta:
+        model = Employee
+        fields = '__all__'
+        read_only_fields = ['role', 'position', 'department', 'salary', 'hire_date', 'status']
+    
+class ManagerUpdateEmployeeSerializer(serializers.ModelSerializer):
+    user = UserSerializer()
+    """Managers can update employees but cannot change role."""
+    class Meta:
+        model = Employee
+        fields = '__all__'
+        read_only_fields = ['role', 'hire_date', 'salary']
+
 
 class DepartmentSerializer(serializers.ModelSerializer):
     class Meta:
