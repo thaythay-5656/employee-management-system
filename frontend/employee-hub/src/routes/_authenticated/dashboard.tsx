@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Users, UserCheck, Building2, Wallet, TrendingUp, CalendarClock } from "lucide-react";
+import { Users, UserCheck, Building2, Wallet, TrendingUp, CalendarClock, Briefcase, PalmtreeIcon, ClockArrowUp } from "lucide-react";
 import {
   Bar,
   BarChart,
@@ -27,11 +27,16 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
 
 function DashboardPage() {
   const user = useAuthStore((s) => s.user);
-  const { employees, departments, leaves, attendance } = useDataStore();
+  const { employees, departments, leaves, attendance, positions } = useDataStore();
 
   if (user?.role === "employee") return <EmployeeDashboard />;
+  if (user?.role === "manager") return <ManagerDashboard />;
 
   const active = employees.filter((e) => e.status === "active").length;
+  const onLeaveCount = employees.filter((e) => e.status === "on-leave").length;
+  const today = attendance.length ? attendance.slice().sort((a, b) => b.date.localeCompare(a.date))[0].date : "";
+  const todayPresent = attendance.filter((a) => a.date === today && a.status === "present").length;
+  const pendingLeaves = leaves.filter((l) => l.status === "pending").length;
   const totalSalary = employees.reduce((s, e) => s + e.salary, 0);
   const last30Present = attendance.filter((a) => a.status === "present").length;
   const attendanceRate = Math.round(
@@ -87,6 +92,10 @@ function DashboardPage() {
         <StatCard label="Total Employees" value={employees.length} delta="+3 this month" icon={Users} tone="primary" />
         <StatCard label="Active" value={active} delta={`${Math.round((active / employees.length) * 100)}% of workforce`} icon={UserCheck} tone="accent" />
         <StatCard label="Departments" value={departments.length} icon={Building2} tone="warning" />
+        <StatCard label="Positions" value={positions.length} icon={Briefcase} tone="primary" />
+        <StatCard label="On Leave" value={onLeaveCount} icon={PalmtreeIcon} tone="warning" />
+        <StatCard label="Today's Attendance" value={todayPresent} delta={today} icon={ClockArrowUp} tone="accent" />
+        <StatCard label="Pending Leaves" value={pendingLeaves} icon={CalendarClock} tone="destructive" />
         <StatCard label="Monthly Payroll" value={`$${(totalSalary / 12 / 1000).toFixed(1)}k`} delta="across all teams" icon={Wallet} tone="primary" />
       </div>
 
@@ -240,6 +249,55 @@ function EmployeeDashboard() {
             </li>
           </ul>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function ManagerDashboard() {
+  const user = useAuthStore((s) => s.user);
+  const { employees, attendance, leaves } = useDataStore();
+  const me = employees.find((e) => e.id === user?.employeeId);
+  const myDept = me?.department;
+  const team = employees.filter((e) => e.department === myDept && e.id !== me?.id);
+  const teamIds = new Set(team.map((t) => t.id));
+  const today = attendance.length ? attendance.slice().sort((a, b) => b.date.localeCompare(a.date))[0].date : "";
+  const todayPresent = attendance.filter((a) => a.date === today && teamIds.has(a.employeeId) && a.status === "present").length;
+  const pendingTeamLeaves = leaves.filter((l) => l.status === "pending" && teamIds.has(l.employeeId)).length;
+  const teamAttendance = attendance.filter((a) => teamIds.has(a.employeeId));
+  const rate = Math.round((teamAttendance.filter((a) => a.status === "present").length / Math.max(1, teamAttendance.length)) * 100);
+
+  const byDate = new Map<string, { date: string; present: number; absent: number }>();
+  for (const r of teamAttendance) {
+    if (!byDate.has(r.date)) byDate.set(r.date, { date: r.date, present: 0, absent: 0 });
+    if (r.status === "present") byDate.get(r.date)!.present++;
+    if (r.status === "absent" || r.status === "on-leave") byDate.get(r.date)!.absent++;
+  }
+  const trend = Array.from(byDate.values()).sort((a, b) => a.date.localeCompare(b.date)).slice(-7);
+
+  return (
+    <div className="space-y-6">
+      <PageHeader title={`Hello, ${me?.firstName ?? me?.fullName.split(" ")[0] ?? "Manager"}`} description={`Managing ${myDept ?? "your team"}.`} />
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard label="Team Members" value={team.length} icon={Users} tone="primary" />
+        <StatCard label="Present Today" value={todayPresent} delta={today} icon={UserCheck} tone="accent" />
+        <StatCard label="Pending Leaves" value={pendingTeamLeaves} icon={CalendarClock} tone="warning" />
+        <StatCard label="Attendance Rate" value={`${rate}%`} icon={TrendingUp} tone="primary" />
+      </div>
+      <div className="glass rounded-xl p-5">
+        <h3 className="font-semibold mb-1">Team attendance trend</h3>
+        <p className="text-xs text-muted-foreground mb-4">Last 7 working days</p>
+        <ResponsiveContainer width="100%" height={240}>
+          <LineChart data={trend}>
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+            <XAxis dataKey="date" stroke="var(--muted-foreground)" fontSize={11} />
+            <YAxis stroke="var(--muted-foreground)" fontSize={11} />
+            <Tooltip contentStyle={{ background: "var(--popover)", border: "1px solid var(--border)", borderRadius: 8 }} />
+            <Legend />
+            <Line type="monotone" dataKey="present" stroke="var(--primary)" strokeWidth={2} />
+            <Line type="monotone" dataKey="absent" stroke="var(--destructive)" strokeWidth={2} />
+          </LineChart>
+        </ResponsiveContainer>
       </div>
     </div>
   );

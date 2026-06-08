@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { Plus, Search, MoreHorizontal, Edit2, Trash2 } from "lucide-react";
+import { Plus, Search, MoreHorizontal, Edit2, Trash2, Download } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -33,6 +33,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useDataStore } from "@/store/data-store";
+import { useAuthStore } from "@/store/auth-store";
+import { exportToExcel, exportTableToPDF } from "@/lib/export";
 import type { Employee } from "@/types";
 
 export const Route = createFileRoute("/_authenticated/employees")({
@@ -59,7 +61,12 @@ type FormValues = z.infer<typeof schema>;
 const POSITIONS = ["HR", "UX/UI Designer", "Software Developer", "Engineering Manager"] as const;
 
 function EmployeesPage() {
-  const { employees, departments, addEmployee, updateEmployee, deleteEmployee } = useDataStore();
+  const { employees, departments, addEmployee, updateEmployee, deleteEmployee, logAudit } = useDataStore();
+  const user = useAuthStore((s) => s.user);
+  const myEmpId = user?.employeeId;
+  const me = employees.find((e) => e.id === myEmpId);
+  const isManager = user?.role === "manager";
+  const canMutate = user?.role === "admin" || user?.role === "hr";
   const [q, setQ] = useState("");
   const [dept, setDept] = useState<string>("all");
   const [status, setStatus] = useState<string>("all");
@@ -67,7 +74,8 @@ function EmployeesPage() {
   const [editing, setEditing] = useState<Employee | null>(null);
   const [open, setOpen] = useState(false);
 
-  const filtered = employees.filter(
+  const scoped = isManager && me ? employees.filter((e) => e.department === me.department) : employees;
+  const filtered = scoped.filter(
     (e) =>
       (dept === "all" || e.department === dept) &&
       (status === "all" || e.status === status) &&
@@ -116,6 +124,7 @@ function EmployeesPage() {
     const fullName = `${values.firstName} ${values.lastName}`.trim();
     if (editing) {
       updateEmployee(editing.id, { ...values, fullName });
+      logAudit(user?.email ?? "system", "Updated employee", fullName);
       toast.success("Employee updated");
     } else {
       addEmployee({
@@ -126,6 +135,7 @@ function EmployeesPage() {
         joinDate: values.hireDate,
         emergencyContact: "",
       });
+      logAudit(user?.email ?? "system", "Created employee", fullName);
       toast.success("Employee added");
     }
     onOpenChange(false);
@@ -133,16 +143,39 @@ function EmployeesPage() {
 
   const handleDelete = (e: Employee) => {
     deleteEmployee(e.id);
+    logAudit(user?.email ?? "system", "Deleted employee", e.fullName);
     toast.success(`Removed ${e.fullName}`);
+  };
+
+  const onExportExcel = () => {
+    exportToExcel(
+      filtered.map((e) => ({
+        Name: e.fullName, Email: e.email, Department: e.department,
+        Position: e.position, Salary: e.salary, Status: e.status, "Hire Date": e.hireDate ?? e.joinDate,
+      })),
+      "employees",
+    );
+  };
+  const onExportPDF = () => {
+    exportTableToPDF(
+      "Employees",
+      ["Name", "Email", "Department", "Position", "Salary", "Status"],
+      filtered.map((e) => [e.fullName, e.email, e.department, e.position, `$${e.salary}`, e.status]),
+      "employees",
+    );
   };
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Employees"
-        description="Manage your workforce, profiles, and employment status."
+        title={isManager ? "My team" : "Employees"}
+        description={isManager ? "View employees in your department." : "Manage your workforce, profiles, and employment status."}
         actions={
-          <Dialog open={open} onOpenChange={onOpenChange}>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={onExportExcel}><Download className="h-3.5 w-3.5 mr-1" /> Excel</Button>
+            <Button variant="outline" size="sm" onClick={onExportPDF}><Download className="h-3.5 w-3.5 mr-1" /> PDF</Button>
+            {canMutate && (
+            <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogTrigger asChild>
               <Button>
                 <Plus className="h-4 w-4 mr-1" /> Add Employee
@@ -260,7 +293,9 @@ function EmployeesPage() {
                 </DialogFooter>
               </form>
             </DialogContent>
-          </Dialog>
+            </Dialog>
+            )}
+          </div>
         }
       />
 
@@ -335,7 +370,8 @@ function EmployeesPage() {
                     </Badge>
                   </td>
                   <td className="px-4 py-3">
-                    <DropdownMenu>
+                      {canMutate ? (
+                      <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button>
                       </DropdownMenuTrigger>
@@ -350,7 +386,8 @@ function EmployeesPage() {
                           <Trash2 className="h-4 w-4 mr-2" /> Delete
                         </DropdownMenuItem>
                       </DropdownMenuContent>
-                    </DropdownMenu>
+                      </DropdownMenu>
+                      ) : <span className="text-xs text-muted-foreground">—</span>}
                   </td>
                 </tr>
               ))}

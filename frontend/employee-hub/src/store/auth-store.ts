@@ -34,7 +34,7 @@ export const useAuthStore = create<AuthState>()(
               id: `u-${emp.id}`,
               email: emp.email,
               password: emp.password ?? password,
-              role: emp.role === "manager" ? "admin" : "employee",
+              role: emp.role === "manager" ? "manager" : "employee",
               employeeId: emp.id,
             };
           }

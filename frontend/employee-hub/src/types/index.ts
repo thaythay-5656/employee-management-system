@@ -1,4 +1,4 @@
-export type Role = "admin" | "hr" | "employee";
+export type Role = "admin" | "hr" | "manager" | "employee";
 
 export interface User {
   id: string;
@@ -38,6 +38,14 @@ export interface Department {
   description: string;
 }
 
+export interface Position {
+  id: string;
+  title: string;
+  department: string;
+  grade: "Junior" | "Mid" | "Senior" | "Lead" | "Manager";
+  baseSalary: number;
+}
+
 export interface AttendanceRecord {
   id: string;
   employeeId: string;
@@ -56,6 +64,8 @@ export interface LeaveRequest {
   reason: string;
   status: "pending" | "approved" | "rejected";
   createdAt: string;
+  comment?: string;
+  approvedBy?: string;
 }
 
 export interface Announcement {
@@ -65,4 +75,34 @@ export interface Announcement {
   pinned: boolean;
   createdAt: string;
   author: string;
+}
+
+export interface AuditLog {
+  id: string;
+  actor: string;
+  action: string;
+  target?: string;
+  createdAt: string;
+}
+
+export interface Notification {
+  id: string;
+  title: string;
+  body: string;
+  createdAt: string;
+  read: boolean;
+  forRole?: Role;
+}
+
+export interface PayrollRecord {
+  id: string;
+  employeeId: string;
+  month: string; // YYYY-MM
+  base: number;
+  bonus: number;
+  deductions: number;
+  tax: number;
+  net: number;
+  status: "paid" | "pending";
+  generatedAt: string;
 }
