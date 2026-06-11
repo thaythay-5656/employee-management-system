@@ -10,19 +10,28 @@ import {
   Settings,
   UserCircle,
   Sparkles,
+  Briefcase,
+  ShieldCheck,
+  ScrollText,
 } from "lucide-react";
 import { useAuthStore } from "@/store/auth-store";
 import { cn } from "@/lib/utils";
+import type { Role } from "@/types";
 
-const navByRole = {
+type NavItem = { to: string; label: string; icon: typeof LayoutDashboard };
+
+const navByRole: Record<Role, NavItem[]> = {
   admin: [
     { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
     { to: "/employees", label: "Employees", icon: Users },
     { to: "/departments", label: "Departments", icon: Building2 },
+    { to: "/positions", label: "Positions", icon: Briefcase },
     { to: "/attendance", label: "Attendance", icon: CalendarCheck },
     { to: "/leave", label: "Leave Requests", icon: PalmtreeIcon },
     { to: "/payroll", label: "Payroll", icon: Wallet },
     { to: "/announcements", label: "Announcements", icon: Megaphone },
+    { to: "/users", label: "Users & Roles", icon: ShieldCheck },
+    { to: "/audit-log", label: "Audit Log", icon: ScrollText },
     { to: "/settings", label: "Settings", icon: Settings },
   ],
   hr: [
@@ -30,6 +39,14 @@ const navByRole = {
     { to: "/employees", label: "Employees", icon: Users },
     { to: "/attendance", label: "Attendance", icon: CalendarCheck },
     { to: "/leave", label: "Leave Requests", icon: PalmtreeIcon },
+    { to: "/announcements", label: "Announcements", icon: Megaphone },
+    { to: "/profile", label: "Profile", icon: UserCircle },
+  ],
+  manager: [
+    { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { to: "/employees", label: "My Team", icon: Users },
+    { to: "/attendance", label: "Team Attendance", icon: CalendarCheck },
+    { to: "/leave", label: "Leave Approvals", icon: PalmtreeIcon },
     { to: "/announcements", label: "Announcements", icon: Megaphone },
     { to: "/profile", label: "Profile", icon: UserCircle },
   ],
@@ -41,7 +58,7 @@ const navByRole = {
     { to: "/announcements", label: "Announcements", icon: Megaphone },
     { to: "/profile", label: "Profile", icon: UserCircle },
   ],
-} as const;
+};
 
 interface Props {
   onNavigate?: () => void;
@@ -73,7 +90,7 @@ export function AppSidebar({ onNavigate }: Props) {
           return (
             <Link
               key={item.to}
-              to={item.to}
+              to={item.to as string}
               onClick={onNavigate}
               className={cn(
                 "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-all",

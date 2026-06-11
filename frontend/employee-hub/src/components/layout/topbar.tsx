@@ -1,4 +1,4 @@
-import { Bell, Moon, Search, Sun, Menu, LogOut, User } from "lucide-react";
+import { Bell, Moon, Search, Sun, Menu, LogOut, User, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -12,6 +12,7 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAuthStore } from "@/store/auth-store";
 import { useThemeStore } from "@/store/theme-store";
+import { useDataStore } from "@/store/data-store";
 import { useNavigate } from "@tanstack/react-router";
 import { Link } from "@tanstack/react-router";
 
@@ -23,9 +24,13 @@ export function Topbar({ onMenuClick }: Props) {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const { theme, toggle } = useThemeStore();
+  const notifications = useDataStore((s) => s.notifications);
+  const markAllRead = useDataStore((s) => s.markAllNotificationsRead);
   const navigate = useNavigate();
 
   const initials = user?.email?.slice(0, 2).toUpperCase() ?? "??";
+  const visible = notifications.filter((n) => !n.forRole || n.forRole === user?.role).slice(0, 8);
+  const unread = visible.filter((n) => !n.read).length;
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-border bg-background/80 backdrop-blur-md px-4 md:px-6">
@@ -40,10 +45,43 @@ export function Topbar({ onMenuClick }: Props) {
         <Button variant="ghost" size="icon" onClick={toggle}>
           {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
         </Button>
-        <Button variant="ghost" size="icon" className="relative">
-          <Bell className="h-4 w-4" />
-          <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-accent" />
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="relative">
+              <Bell className="h-4 w-4" />
+              {unread > 0 && (
+                <span className="absolute top-1.5 right-1.5 h-4 min-w-4 px-1 rounded-full bg-accent text-[9px] font-semibold text-accent-foreground flex items-center justify-center">
+                  {unread}
+                </span>
+              )}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-80">
+            <div className="flex items-center justify-between px-2 py-1.5">
+              <DropdownMenuLabel className="px-0">Notifications</DropdownMenuLabel>
+              {unread > 0 && (
+                <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={markAllRead}>
+                  <Check className="h-3 w-3 mr-1" /> Mark all read
+                </Button>
+              )}
+            </div>
+            <DropdownMenuSeparator />
+            <div className="max-h-80 overflow-y-auto">
+              {visible.length === 0 && (
+                <div className="text-center text-xs text-muted-foreground py-6">No notifications.</div>
+              )}
+              {visible.map((n) => (
+                <div key={n.id} className={`px-3 py-2.5 border-b border-border last:border-0 ${!n.read ? "bg-muted/30" : ""}`}>
+                  <div className="text-sm font-medium">{n.title}</div>
+                  <div className="text-xs text-muted-foreground line-clamp-2">{n.body}</div>
+                  <div className="text-[10px] text-muted-foreground mt-1">
+                    {new Date(n.createdAt).toLocaleString()}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </DropdownMenuContent>
+        </DropdownMenu>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="gap-2 px-2">
