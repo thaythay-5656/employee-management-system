@@ -1,5 +1,6 @@
 from django.shortcuts import render
 from django.http import HttpResponse
+from django.db.models import Q
 from .serializer import *
 from .models import *
 from rest_framework import viewsets
@@ -50,7 +51,9 @@ class EmployeeViewSet(viewsets.ModelViewSet):
             return Employee.objects.all()
 
         if role == 'manager':
-            return Employee.objects.filter(role='employee')
+            return Employee.objects.filter(
+                Q(role='employee') | Q(pk=self.request.user.employee.pk)
+            )
 
         if role == 'employee':
             return Employee.objects.filter(user=self.request.user)
@@ -139,6 +142,21 @@ class LoginView(APIView):
             if user.is_active:
 
                 refresh = RefreshToken.for_user(user)
+                try:
+                    emp = user.employee          # Employee model linked to User
+                    refresh["role"]        = emp.role   # "admin" | "manager" | "employee"
+                    refresh["employee_id"] = emp.id
+                    refresh["username"]    = user.username
+                    refresh["email"]       = user.email
+                except Exception:
+                    # User has no Employee profile (e.g. a superuser/admin created
+                    # directly in Django admin with no Employee row)
+                    refresh["role"]        = "admin"
+                    refresh["employee_id"] = None
+                    refresh["username"]    = user.username
+                    refresh["email"]       = user.email
+ 
+            
 
                 return Response({
                     "message": "Login successful",
