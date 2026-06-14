@@ -21,7 +21,8 @@ function PayrollPage() {
   const months = useMemo(() => Array.from(new Set(payrolls.map((p) => p.month))).sort().reverse(), [payrolls]);
   const [month, setMonth] = useState(months[0] ?? "2026-05");
   const records = payrolls.filter((p) => p.month === month);
-  const myId = user?.employeeId ?? employees[0]?.id;
+  const me = employees.find((e) => e.username === user?.username);
+  const myId = me?.id ?? employees[0]?.id;
   const list = isEmployee ? payrolls.filter((p) => p.employeeId === myId) : records;
 
   const company = "Nimbus HR";

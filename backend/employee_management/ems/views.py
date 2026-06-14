@@ -144,6 +144,12 @@ class LoginView(APIView):
                     "message": "Login successful",
                     "refresh": str(refresh),
                     "access": str(refresh.access_token),
+                    "user": {
+                        "id": user.id,
+                        "username": user.username,
+                        "email": user.email,
+                        "role": user.employee.role
+                    }
                 }, status=status.HTTP_200_OK)
             else:
                 return Response({"error": "Account is disabled"}, status=status.HTTP_403_FORBIDDEN)

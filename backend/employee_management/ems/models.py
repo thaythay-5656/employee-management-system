@@ -6,12 +6,6 @@ from django.contrib.auth.models import User
 # ENUM CHOICES
 # =========================
 
-EMPLOYMENT_STATUS = [
-    ('active', 'Active'),
-    ('inactive', 'Inactive'),
-    ('terminated', 'Terminated'),
-]
-
 LEAVE_STATUS = [
     ('pending', 'Pending'),
     ('approved', 'Approved'),
@@ -93,12 +87,6 @@ class Employee(models.Model):
     salary = models.DecimalField(
         max_digits=10,
         decimal_places=2
-    )
-
-    status = models.CharField(
-        max_length=20,
-        choices=EMPLOYMENT_STATUS,
-        default='active'
     )
 
     department = models.ForeignKey(

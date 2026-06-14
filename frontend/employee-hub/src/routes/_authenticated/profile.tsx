@@ -23,7 +23,7 @@ export const Route = createFileRoute("/_authenticated/profile")({
 function ProfilePage() {
   const user = useAuthStore((s) => s.user);
   const { employees, updateEmployee } = useDataStore();
-  const me = employees.find((e) => e.id === user?.employeeId) ?? employees[0];
+  const me = employees.find((e) => e.username === user?.username) ?? employees[0];
   const [fn, ...rest] = (me.fullName ?? "").split(" ");
   const [form, setForm] = useState({
     firstName: me.firstName ?? fn ?? "",

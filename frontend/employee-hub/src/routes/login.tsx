@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
@@ -10,12 +10,14 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { useAuthStore } from "@/store/auth-store";
 
-const schema = z.object({
-  email: z.string().min(2, "Enter your email or username"),
-  password: z.string().min(4, "At least 4 characters"),
-  remember: z.boolean().optional(),
+const loginSchema = z.object({
+  username: z.string().min(1, { message: "Username is required" }),
+  // FIX: corrected error message to say "at least 3 characters" to match min(3)
+  password: z.string().min(3, { message: "Password must be at least 3 characters" }),
+  remember: z.boolean(),
 });
-type FormValues = z.infer<typeof schema>;
+
+type FormValues = z.infer<typeof loginSchema>;
 
 export const Route = createFileRoute("/login")({
   component: LoginPage,
@@ -24,31 +26,49 @@ export const Route = createFileRoute("/login")({
 function LoginPage() {
   const login = useAuthStore((s) => s.login);
   const navigate = useNavigate();
+
   const form = useForm<FormValues>({
-    resolver: zodResolver(schema),
-    defaultValues: { email: "", password: "", remember: true },
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      username: "",
+      password: "",
+      remember: false,
+    },
   });
 
-  const onSubmit = (values: FormValues) => {
-    const res = login(values.email, values.password);
-    if (!res.ok) {
-      toast.error(res.error ?? "Login failed");
-      return;
+  // FIX: use form.handleSubmit so validation runs and isSubmitting flips correctly
+  const onSubmit = async (values: FormValues) => {
+    try {
+      const res = await login(values.username, values.password);
+
+      if (!res.ok) {
+        toast.error(res.error ?? "Login failed");
+        return;
+      }
+
+      toast.success("Welcome back!");
+      navigate({ to: "/dashboard" });
+    } catch (error) {
+      toast.error("An unexpected error occurred. Please try again.");
     }
-    toast.success("Welcome back!");
-    navigate({ to: "/dashboard" });
   };
 
   return (
     <AuthShell title="Sign in to Nimbus HR" subtitle="Welcome back. Enter your details to continue.">
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="email">Email/Username</Label>
-          <Input id="email" type="text" placeholder="you@company.com or username" {...form.register("email")} />
-          {form.formState.errors.email && (
-            <p className="text-xs text-destructive">{form.formState.errors.email.message}</p>
+          <Label htmlFor="username">Username</Label>
+          <Input
+            id="username"
+            type="text"
+            placeholder="Enter your username"
+            {...form.register("username")}
+          />
+          {form.formState.errors.username && (
+            <p className="text-xs text-destructive">{form.formState.errors.username.message}</p>
           )}
         </div>
+
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <Label htmlFor="password">Password</Label>
@@ -56,17 +76,36 @@ function LoginPage() {
               Forgot password?
             </Link>
           </div>
-          <Input id="password" type="password" placeholder="••••••••" {...form.register("password")} />
+          <Input
+            id="password"
+            type="password"
+            placeholder="••••••••"
+            {...form.register("password")}
+          />
           {form.formState.errors.password && (
             <p className="text-xs text-destructive">{form.formState.errors.password.message}</p>
           )}
         </div>
+
         <div className="flex items-center gap-2">
-          <Checkbox id="remember" defaultChecked />
-          <Label htmlFor="remember" className="text-sm font-normal">Remember me</Label>
+          <Controller
+            control={form.control}
+            name="remember"
+            render={({ field }) => (
+              <Checkbox
+                id="remember"
+                checked={field.value}
+                onCheckedChange={field.onChange}
+              />
+            )}
+          />
+          <Label htmlFor="remember" className="text-sm font-normal select-none">
+            Remember me
+          </Label>
         </div>
+
         <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
-          Sign in
+          {form.formState.isSubmitting ? "Signing in..." : "Sign in"}
         </Button>
       </form>
     </AuthShell>

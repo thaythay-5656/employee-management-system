@@ -22,8 +22,8 @@ function AttendancePage() {
 
   const isEmployee = user?.role === "employee";
   const isManager = user?.role === "manager";
-  const me = employees.find((e) => e.id === user?.employeeId);
-  const myId = user?.employeeId ?? employees[0].id;
+  const me = employees.find((e) => e.username === user?.username);
+  const myId = me?.id ?? employees[0].id;
 
   const [dateFilter, setDateFilter] = useState("");
   const [empFilter, setEmpFilter] = useState("all");

@@ -27,7 +27,7 @@ export const Route = createFileRoute("/_authenticated/announcements")({
 function AnnouncementsPage() {
   const { announcements, addAnnouncement, removeAnnouncement } = useDataStore();
   const user = useAuthStore((s) => s.user);
-  const canManage = user?.role === "admin" || user?.role === "hr";
+  const canManage = user?.role === "admin" || user?.role === "manager";
 
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");

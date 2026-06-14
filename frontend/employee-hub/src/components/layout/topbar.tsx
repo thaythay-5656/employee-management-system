@@ -13,8 +13,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAuthStore } from "@/store/auth-store";
 import { useThemeStore } from "@/store/theme-store";
 import { useDataStore } from "@/store/data-store";
-import { useNavigate } from "@tanstack/react-router";
-import { Link } from "@tanstack/react-router";
+import { useNavigate, Link } from "@tanstack/react-router";
 
 interface Props {
   onMenuClick: () => void;
@@ -28,9 +27,19 @@ export function Topbar({ onMenuClick }: Props) {
   const markAllRead = useDataStore((s) => s.markAllNotificationsRead);
   const navigate = useNavigate();
 
-  const initials = user?.email?.slice(0, 2).toUpperCase() ?? "??";
-  const visible = notifications.filter((n) => !n.forRole || n.forRole === user?.role).slice(0, 8);
+  const userIdentifier = user?.username || user?.email || "??";
+  const initials = userIdentifier.slice(0, 2).toUpperCase();
+
+  const visible = notifications
+    .filter((n) => !n.forRole || n.forRole === user?.role)
+    .slice(0, 8);
   const unread = visible.filter((n) => !n.read).length;
+
+  // FIX: logout is now async — await it before navigating
+  const handleLogout = async () => {
+    await logout();
+    navigate({ to: "/login" });
+  };
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-border bg-background/80 backdrop-blur-md px-4 md:px-6">
@@ -45,6 +54,8 @@ export function Topbar({ onMenuClick }: Props) {
         <Button variant="ghost" size="icon" onClick={toggle}>
           {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
         </Button>
+
+        {/* Notifications */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="relative">
@@ -82,6 +93,8 @@ export function Topbar({ onMenuClick }: Props) {
             </div>
           </DropdownMenuContent>
         </DropdownMenu>
+
+        {/* User menu */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="gap-2 px-2">
@@ -91,8 +104,8 @@ export function Topbar({ onMenuClick }: Props) {
                 </AvatarFallback>
               </Avatar>
               <div className="hidden sm:block text-left">
-                <div className="text-xs font-medium leading-tight">{user?.email}</div>
-                <div className="text-[10px] text-muted-foreground capitalize">{user?.role}</div>
+                <div className="text-xs font-medium leading-tight">{user?.username || user?.email}</div>
+                <div className="text-[10px] text-muted-foreground capitalize">{user?.role ?? "User"}</div>
               </div>
             </Button>
           </DropdownMenuTrigger>
@@ -105,13 +118,7 @@ export function Topbar({ onMenuClick }: Props) {
               </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={() => {
-                logout();
-                navigate({ to: "/login" });
-              }}
-              className="text-destructive"
-            >
+            <DropdownMenuItem onClick={handleLogout} className="text-destructive">
               <LogOut className="mr-2 h-4 w-4" /> Sign out
             </DropdownMenuItem>
           </DropdownMenuContent>

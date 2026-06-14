@@ -21,7 +21,8 @@ export const Route = createFileRoute("/_authenticated/users")({
   beforeLoad: () => {
     if (typeof window === "undefined") return;
     try {
-      const raw = localStorage.getItem("hr-auth");
+      // FIX: correct localStorage key to match auth store
+      const raw = localStorage.getItem("nimbus-auth-storage");
       const parsed = raw ? JSON.parse(raw) : null;
       if (parsed?.state?.user?.role !== "admin") throw redirect({ to: "/dashboard" });
     } catch (e) {
@@ -31,14 +32,14 @@ export const Route = createFileRoute("/_authenticated/users")({
   component: UsersPage,
 });
 
-const ROLES: Role[] = ["admin", "hr", "manager", "employee"];
+// FIX: removed "hr" — not a valid Django role
+const ROLES: Role[] = ["admin", "manager", "employee"];
 
 function UsersPage() {
   const { users, addUser, updateUser, deleteUser, logAudit } = useDataStore();
   const me = useAuthStore((s) => s.user);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ email: "", password: "", role: "employee" as Role });
-  // Track deactivated users in a local map (mock: store on a fake field via patch)
   const [pwOpen, setPwOpen] = useState<string | null>(null);
   const [newPw, setNewPw] = useState("");
 
@@ -102,7 +103,8 @@ function UsersPage() {
                     </Button>
                     <Button size="sm" variant="outline" className="text-destructive"
                       onClick={() => { deleteUser(u.id); toast.success("User deleted"); }}
-                      disabled={u.id === me?.id}>
+                      // FIX: compare by username since mock user ids don't match Django's numeric id
+                      disabled={u.email === me?.email}>
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   </td>

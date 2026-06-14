@@ -41,8 +41,8 @@ function LeavePage() {
   const { leaves, employees, addLeave, updateLeaveStatus, cancelLeave, logAudit, addNotification } = useDataStore();
   const isEmployee = user?.role === "employee";
   const isManager = user?.role === "manager";
-  const me = employees.find((e) => e.id === user?.employeeId);
-  const myId = user?.employeeId ?? employees[0].id;
+  const me = employees.find((e) => e.username === user?.username);
+  const myId = me?.id ?? employees[0].id;
   let list = leaves;
   if (isEmployee) list = leaves.filter((l) => l.employeeId === myId);
   else if (isManager && me) {

@@ -16,11 +16,11 @@ import {
 } from "lucide-react";
 import { useAuthStore } from "@/store/auth-store";
 import { cn } from "@/lib/utils";
-import type { Role } from "@/types";
 
 type NavItem = { to: string; label: string; icon: typeof LayoutDashboard };
 
-const navByRole: Record<Role, NavItem[]> = {
+// Matches Django ROLE_CHOICES exactly: admin | manager | employee
+const navByRole: Record<'admin' | 'manager' | 'employee', NavItem[]> = {
   admin: [
     { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
     { to: "/employees", label: "Employees", icon: Users },
@@ -33,14 +33,6 @@ const navByRole: Record<Role, NavItem[]> = {
     { to: "/users", label: "Users & Roles", icon: ShieldCheck },
     { to: "/audit-log", label: "Audit Log", icon: ScrollText },
     { to: "/settings", label: "Settings", icon: Settings },
-  ],
-  hr: [
-    { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-    { to: "/employees", label: "Employees", icon: Users },
-    { to: "/attendance", label: "Attendance", icon: CalendarCheck },
-    { to: "/leave", label: "Leave Requests", icon: PalmtreeIcon },
-    { to: "/announcements", label: "Announcements", icon: Megaphone },
-    { to: "/profile", label: "Profile", icon: UserCircle },
   ],
   manager: [
     { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -67,8 +59,13 @@ interface Props {
 export function AppSidebar({ onNavigate }: Props) {
   const user = useAuthStore((s) => s.user);
   const pathname = useRouterState({ select: (r) => r.location.pathname });
+
+  // Guard: no user = not logged in yet
   if (!user) return null;
-  const items = navByRole[user.role];
+
+  // FIX: role is now flat on user, not nested under user.employee
+  const currentRole = user.role;
+  const items = navByRole[currentRole] ?? [];
 
   return (
     <aside className="flex h-full w-64 flex-col bg-sidebar border-r border-sidebar-border">
@@ -79,7 +76,7 @@ export function AppSidebar({ onNavigate }: Props) {
         <div>
           <div className="text-sm font-semibold text-sidebar-foreground">Nimbus HR</div>
           <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
-            {user.role} portal
+            {currentRole} portal
           </div>
         </div>
       </div>

@@ -84,7 +84,7 @@ function DashboardPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title={`Welcome back, ${user?.role === "admin" ? "Admin" : "HR"}`}
+        title={`Welcome back, ${user?.username ?? "Admin"}`}
         description="Here's what's happening across your organization."
       />
 
@@ -195,7 +195,7 @@ function DashboardPage() {
 function EmployeeDashboard() {
   const user = useAuthStore((s) => s.user);
   const { employees, attendance, leaves, announcements } = useDataStore();
-  const me = employees.find((e) => e.id === user?.employeeId) ?? employees[0];
+  const me = employees.find((e) => e.email === user?.email) ?? employees[0];
   const myAtt = attendance.filter((a) => a.employeeId === me.id);
   const presentDays = myAtt.filter((a) => a.status === "present").length;
   const rate = Math.round((presentDays / Math.max(1, myAtt.length)) * 100);
@@ -257,7 +257,7 @@ function EmployeeDashboard() {
 function ManagerDashboard() {
   const user = useAuthStore((s) => s.user);
   const { employees, attendance, leaves } = useDataStore();
-  const me = employees.find((e) => e.id === user?.employeeId);
+  const me = employees.find((e) => e.email === user?.email);
   const myDept = me?.department;
   const team = employees.filter((e) => e.department === myDept && e.id !== me?.id);
   const teamIds = new Set(team.map((t) => t.id));
@@ -277,7 +277,7 @@ function ManagerDashboard() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title={`Hello, ${me?.firstName ?? me?.fullName.split(" ")[0] ?? "Manager"}`} description={`Managing ${myDept ?? "your team"}.`} />
+      <PageHeader title={`Hello, ${me?.fullName?.split(" ")[0] ?? "Manager"}`} description={`Managing ${myDept ?? "your team"}.`} />
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Team Members" value={team.length} icon={Users} tone="primary" />
         <StatCard label="Present Today" value={todayPresent} delta={today} icon={UserCheck} tone="accent" />

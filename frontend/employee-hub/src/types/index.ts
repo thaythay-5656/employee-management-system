@@ -1,4 +1,5 @@
-export type Role = "admin" | "hr" | "manager" | "employee";
+// FIX: removed "hr" — not a valid Django role
+export type Role = "admin" | "manager" | "employee";
 
 export interface User {
   id: string;
@@ -97,7 +98,7 @@ export interface Notification {
 export interface PayrollRecord {
   id: string;
   employeeId: string;
-  month: string; // YYYY-MM
+  month: string;
   base: number;
   bonus: number;
   deductions: number;

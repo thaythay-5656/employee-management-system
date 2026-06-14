@@ -5,7 +5,7 @@ from django.contrib.auth.models import User
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['username', 'password', 'first_name', 'last_name', 'email']
+        fields = ['username', 'password', 'first_name', 'last_name', 'email', 'is_active']
 
 class EmployeeSerializer(serializers.ModelSerializer):
     user = UserSerializer() # Tells serializer to expect a dictionary layout

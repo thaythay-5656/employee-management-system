@@ -63,10 +63,10 @@ const POSITIONS = ["HR", "UX/UI Designer", "Software Developer", "Engineering Ma
 function EmployeesPage() {
   const { employees, departments, addEmployee, updateEmployee, deleteEmployee, logAudit } = useDataStore();
   const user = useAuthStore((s) => s.user);
-  const myEmpId = user?.employeeId;
-  const me = employees.find((e) => e.id === myEmpId);
+  const me = employees.find((e) => e.username === user?.username);
+  const myEmpId = me?.id;
   const isManager = user?.role === "manager";
-  const canMutate = user?.role === "admin" || user?.role === "hr";
+  const canMutate = user?.role === "admin";
   const [q, setQ] = useState("");
   const [dept, setDept] = useState<string>("all");
   const [status, setStatus] = useState<string>("all");
