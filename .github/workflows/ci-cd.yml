@@ -57,14 +57,14 @@ jobs:
         with:
           node-version: "22"
           cache: "npm"
-          cache-dependency-path: frontend/package-lock.json
+          cache-dependency-path: frontend/employee-hub/package-lock.json
 
       - name: Install dependencies
-        working-directory: frontend
+        working-directory: frontend/employee-hub
         run: npm install --legacy-peer-deps
 
       - name: Build frontend
-        working-directory: frontend
+        working-directory: frontend/employee-hub
         run: npm run build
 
   # ── 3. Build & Push Docker Images (only on push to main or develop) ────────
@@ -109,8 +109,8 @@ jobs:
       - name: Build and push frontend image
         uses: docker/build-push-action@v5
         with:
-          context: ./frontend
-          file: ./frontend/Dockerfile
+          context: ./frontend/employee-hub
+          file: ./frontend/employee-hub/Dockerfile
           push: true
           tags: ${{ env.IMAGE_FRONTEND }}:${{ steps.tag.outputs.TAG }}
 
