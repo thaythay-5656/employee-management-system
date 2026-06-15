@@ -1,63 +1,147 @@
-# =========================
-# Dependencies
-# =========================
+# # =========================
+# # Dependencies
+# # =========================
+# node_modules/
+
+# # =========================
+# # Environment variables
+# # =========================
+# .env
+# .env.local
+# .env.development.local
+# .env.test.local
+# .env.production.local
+
+# # =========================
+# # Build folders
+# # =========================
+# New-Item -ItemType File -Path .\backend\.gitkeep
+# New-Item -ItemType File -Path .\docker\.gitkeep
+# New-Item -ItemType File -Path .\frontend\.gitkeep
+# New-Item -ItemType File -Path .\K8s\.gitkeep
+# New-Item -ItemType File -Path .\monitoring\.gitkeep
+# New-Item -ItemType File -Path .\terraform\.gitkeep
+# git add .
+# git commit -m "Add placeholder files for empty folder structure"
+# git push
+
+
+# # =========================
+# # Logs
+# # =========================
+# logs/
+# *.log
+# npm-debug.log*
+# yarn-debug.log*
+# yarn-error.log*
+
+# # =========================
+# # IDE / Editor
+# # =========================
+# .vscode/
+# .idea/
+
+# # =========================
+# # OS generated files
+# # =========================
+# .DS_Store
+# Thumbs.db
+
+# # =========================
+# # Terraform
+# # =========================
+# *.tfstate
+# *.tfstate.backup
+# .terraform/
+
+# # =========================
+# # Docker
+# # =========================
+# docker-data/
+
+# # =========================
+# # Coverage / Testing
+# # =========================
+# coverage/
+
+# # =========================
+# # Misc
+# # =========================
+# *.tmp
+
+# *.swp
+
+
+# # Node
+# node_modules/
+
+# # MacOS
+# __MACOSX/
+# .DS_Store
+
+# # Frontend generated
+# frontend/employee-hub/node_modules/
+
+# # ignore the Python virtual environment
+# # Include/
+# # Lib/
+# # Scripts/
+# # pyvenv.cfg
+# backend/venv/
+# backend/.venv/
+
+# # ignore Python runtime files
+# *.pyc
+# *.pyo
+# __pycache__/
+
+# *.sqlite3
+# db.sqlite3
+
+
 node_modules/
 
-# =========================
-# Environment variables
-# =========================
 .env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
 
-# =========================
-# Build folders
-# =========================
-dist/
-build/
-
-# =========================
-# Logs
-# =========================
 logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# =========================
-# IDE / Editor
-# =========================
 .vscode/
 .idea/
 
-# =========================
-# OS generated files
-# =========================
 .DS_Store
 Thumbs.db
 
-# =========================
-# Terraform
-# =========================
 *.tfstate
 *.tfstate.backup
 .terraform/
 
-# =========================
-# Docker
-# =========================
 docker-data/
 
-# =========================
-# Coverage / Testing
-# =========================
 coverage/
 
-# =========================
-# Misc
-# =========================
 *.tmp
 *.swp
+
+frontend/employee-hub/node_modules/
+
+backend/Include/
+backend/Lib/
+backend/Scripts/
+backend/pyvenv.cfg
+backend/.venv/
+backend/venv/
+
+*.pyc
+*.pyo
+__pycache__/
+
+*.sqlite3
+db.sqlite3
