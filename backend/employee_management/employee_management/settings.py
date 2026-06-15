@@ -25,7 +25,7 @@
 # # SECURITY WARNING: don't run with debug turned on in production!
 # DEBUG = True
 
-# ALLOWED_HOSTS = []
+# ALLOWED_HOSTS = ["localhost", "127.0.0.1", "backend"]
 
 
 # # Application definition
@@ -188,10 +188,11 @@ if not SECRET_KEY:
 
 DEBUG = os.environ.get("DEBUG", "False").lower() in ("true", "1", "yes")
 
-ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+ALLOWED_HOSTS = ["localhost", "127.0.0.1", "backend"]
 
 # ── Application definition ────────────────────────────────────────────────────
 INSTALLED_APPS = [
+    'django_prometheus',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -205,6 +206,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'django_prometheus.middleware.PrometheusBeforeMiddleware',  # ← FIRST
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -213,6 +215,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'django_prometheus.middleware.PrometheusAfterMiddleware',  # ← LAST
 ]
 
 ROOT_URLCONF = 'employee_management.urls'
@@ -254,7 +257,7 @@ else:
             "PASSWORD": os.environ.get("DB_PASSWORD", ""),
             "HOST": os.environ.get("DB_HOST", ""),
             "PORT": os.environ.get("DB_PORT", "5432"),
-            "OPTIONS": {"sslmode": "require"},
+           
         }
     }
 
