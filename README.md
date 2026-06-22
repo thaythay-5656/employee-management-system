@@ -20,4 +20,4 @@ Setup Docker Compose
 Configure GitHub Actions
 
 
-Trigger Event
+Trigger Event and Action
