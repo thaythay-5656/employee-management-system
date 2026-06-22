@@ -12,13 +12,13 @@ FROM nginx:alpine
 # 1. Overwrite default config
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# 2. Clear out everything
+# 2. Clear out everything from the web root
 RUN rm -rf /usr/share/nginx/html/*
 
-# 3. Copy Vite's native index.html entry point
-COPY --from=builder /app/dist/index.html /usr/share/nginx/html/index.html
+# 3. Copy Vite's native auto-generated index.html file
+COPY --from=builder /app/dist/client/index.html /usr/share/nginx/html/index.html
 
-# 4. Copy the assets folder contents directly into the web root assets folder
+# 4. Copy the compiled assets folder cleanly
 COPY --from=builder /app/dist/client/assets /usr/share/nginx/html/assets
 
 EXPOSE 80
