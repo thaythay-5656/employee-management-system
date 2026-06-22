@@ -12,10 +12,11 @@ FROM nginx:alpine
 # 1. Overwrite default config
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
+# 2. Wipe out default folder
 RUN rm -rf /usr/share/nginx/html/*
 
-# 3. Copy your fresh React client build files into the empty directory
-COPY --from=builder /app/dist/client /usr/share/nginx/html
+# 3. Make sure we copy ALL files and subfolders cleanly
+COPY --from=builder /app/dist/client/. /usr/share/nginx/html/
 
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
