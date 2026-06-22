@@ -15,10 +15,9 @@ services:
       - DB_HOST=database-ems.c96qsmskwzwb.ap-southeast-2.rds.amazonaws.com
       - DB_PORT=5432
 
+services:
   frontend:
     image: seavthay/ems-frontend:latest
     ports:
-      - "80:80"
+      - "80:3000"
     restart: always
-    depends_on:
-      - backend
