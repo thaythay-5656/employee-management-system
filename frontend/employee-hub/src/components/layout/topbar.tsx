@@ -1,4 +1,4 @@
-import { Bell, Moon, Search, Sun, Menu, LogOut, User, Check } from "lucide-react";
+import { Bell, Moon, Search, Sun, Menu, LogOut, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -9,11 +9,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuthStore } from "@/store/auth-store";
 import { useThemeStore } from "@/store/theme-store";
-import { useDataStore } from "@/store/data-store";
 import { useNavigate, Link } from "@tanstack/react-router";
+import { useEmployees } from "@/api/queries/useEmployees";
+import { useAnnouncements } from "@/api/queries/useAnnouncements";
+
+const DJANGO_BASE = "http://127.0.0.1:8000";
 
 interface Props {
   onMenuClick: () => void;
@@ -23,19 +26,28 @@ export function Topbar({ onMenuClick }: Props) {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const { theme, toggle } = useThemeStore();
-  const notifications = useDataStore((s) => s.notifications);
-  const markAllRead = useDataStore((s) => s.markAllNotificationsRead);
   const navigate = useNavigate();
 
-  const userIdentifier = user?.username || user?.email || "??";
+  // Get current user's employee record for profile picture
+  const { data: employees = [] } = useEmployees();
+  const me = employees.find((e) => e.user.username === user?.username);
+
+  // Use latest announcements as notifications (no notification model in Django)
+  const { data: announcements = [] } = useAnnouncements();
+  const recentAnnouncements = [...announcements]
+    .sort((a, b) => b.created_at.localeCompare(a.created_at))
+    .slice(0, 5);
+
+  const userIdentifier = user?.username || "??";
   const initials = userIdentifier.slice(0, 2).toUpperCase();
 
-  const visible = notifications
-    .filter((n) => !n.forRole || n.forRole === user?.role)
-    .slice(0, 8);
-  const unread = visible.filter((n) => !n.read).length;
+  const avatarSrc = (() => {
+    if (!me?.profile_picture) return undefined;
+    return me.profile_picture.startsWith("http")
+      ? me.profile_picture
+      : `${DJANGO_BASE}/media/${me.profile_picture}`;
+  })();
 
-  // FIX: logout is now async — await it before navigating
   const handleLogout = async () => {
     await logout();
     navigate({ to: "/login" });
@@ -55,42 +67,47 @@ export function Topbar({ onMenuClick }: Props) {
           {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
         </Button>
 
-        {/* Notifications */}
+        {/* Notifications — latest announcements */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="relative">
               <Bell className="h-4 w-4" />
-              {unread > 0 && (
+              {recentAnnouncements.length > 0 && (
                 <span className="absolute top-1.5 right-1.5 h-4 min-w-4 px-1 rounded-full bg-accent text-[9px] font-semibold text-accent-foreground flex items-center justify-center">
-                  {unread}
+                  {recentAnnouncements.length}
                 </span>
               )}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-80">
             <div className="flex items-center justify-between px-2 py-1.5">
-              <DropdownMenuLabel className="px-0">Notifications</DropdownMenuLabel>
-              {unread > 0 && (
-                <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={markAllRead}>
-                  <Check className="h-3 w-3 mr-1" /> Mark all read
-                </Button>
-              )}
+              <DropdownMenuLabel className="px-0">Announcements</DropdownMenuLabel>
             </div>
             <DropdownMenuSeparator />
             <div className="max-h-80 overflow-y-auto">
-              {visible.length === 0 && (
-                <div className="text-center text-xs text-muted-foreground py-6">No notifications.</div>
+              {recentAnnouncements.length === 0 && (
+                <div className="text-center text-xs text-muted-foreground py-6">No announcements.</div>
               )}
-              {visible.map((n) => (
-                <div key={n.id} className={`px-3 py-2.5 border-b border-border last:border-0 ${!n.read ? "bg-muted/30" : ""}`}>
-                  <div className="text-sm font-medium">{n.title}</div>
-                  <div className="text-xs text-muted-foreground line-clamp-2">{n.body}</div>
+              {recentAnnouncements.map((a) => (
+                <div key={a.id} className="px-3 py-2.5 border-b border-border last:border-0 hover:bg-muted/20">
+                  <div className="text-sm font-medium">{a.title}</div>
+                  <div className="text-xs text-muted-foreground line-clamp-2">{a.content}</div>
                   <div className="text-[10px] text-muted-foreground mt-1">
-                    {new Date(n.createdAt).toLocaleString()}
+                    {new Date(a.created_at).toLocaleString()}
                   </div>
                 </div>
               ))}
             </div>
+            {recentAnnouncements.length > 0 && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link to="/announcements" className="text-xs text-center w-full justify-center text-primary">
+                    View all announcements
+                  </Link>
+                </DropdownMenuItem>
+              </>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
 
@@ -99,12 +116,13 @@ export function Topbar({ onMenuClick }: Props) {
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="gap-2 px-2">
               <Avatar className="h-8 w-8">
+                <AvatarImage src={avatarSrc} alt={userIdentifier} className="object-cover" />
                 <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-primary-foreground text-xs">
                   {initials}
                 </AvatarFallback>
               </Avatar>
               <div className="hidden sm:block text-left">
-                <div className="text-xs font-medium leading-tight">{user?.username || user?.email}</div>
+                <div className="text-xs font-medium leading-tight">{user?.username}</div>
                 <div className="text-[10px] text-muted-foreground capitalize">{user?.role ?? "User"}</div>
               </div>
             </Button>

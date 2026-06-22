@@ -36,12 +36,12 @@ class IsSelfEmployee(permissions.BasePermission):
 
     def has_permission(self, request, view):
         if view.action not in self.ALLOWED_ACTIONS:
-            return False  # blocks create and destroy explicitly
+            return False
         return (
             request.user and
             request.user.is_authenticated and
             hasattr(request.user, 'employee') and
-            request.user.employee.role == 'employee'
+            request.user.employee.role in ['employee', 'manager']  # ← add manager
         )
 
     def has_object_permission(self, request, view, obj):

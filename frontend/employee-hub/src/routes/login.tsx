@@ -1,4 +1,5 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
+import { useEffect } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -9,23 +10,40 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { useAuthStore } from "@/store/auth-store";
+import { tokenStorage } from "@/api/tokenStorage";
 
 const loginSchema = z.object({
   username: z.string().min(1, { message: "Username is required" }),
-  // FIX: corrected error message to say "at least 3 characters" to match min(3)
   password: z.string().min(3, { message: "Password must be at least 3 characters" }),
   remember: z.boolean(),
 });
 
 type FormValues = z.infer<typeof loginSchema>;
 
+const searchSchema = z.object({
+  redirect: z.string().optional(),
+});
+
 export const Route = createFileRoute("/login")({
+  validateSearch: searchSchema,
+  // If already authenticated (e.g. token still valid after refresh, or
+  // another tab just logged in), skip the login page entirely.
+  beforeLoad: ({ search }) => {
+    const hasToken = !!tokenStorage.getAccess();
+    const hasUser = !!tokenStorage.getUser();
+
+    if (hasToken && hasUser) {
+      throw redirect({ to: search.redirect ?? "/dashboard" });
+    }
+  },
   component: LoginPage,
 });
 
 function LoginPage() {
   const login = useAuthStore((s) => s.login);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const navigate = useNavigate();
+  const { redirect: redirectTo } = Route.useSearch();
 
   const form = useForm<FormValues>({
     resolver: zodResolver(loginSchema),
@@ -36,7 +54,15 @@ function LoginPage() {
     },
   });
 
-  // FIX: use form.handleSubmit so validation runs and isSubmitting flips correctly
+  // Cross-tab: if another tab logs in while this tab sits on /login,
+  // the 'storage' listener in auth-store flips isAuthenticated -> true.
+  // Redirect this tab too.
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate({ to: redirectTo ?? "/dashboard" });
+    }
+  }, [isAuthenticated, navigate, redirectTo]);
+
   const onSubmit = async (values: FormValues) => {
     try {
       const res = await login(values.username, values.password);
@@ -47,7 +73,7 @@ function LoginPage() {
       }
 
       toast.success("Welcome back!");
-      navigate({ to: "/dashboard" });
+      navigate({ to: redirectTo ?? "/dashboard" });
     } catch (error) {
       toast.error("An unexpected error occurred. Please try again.");
     }

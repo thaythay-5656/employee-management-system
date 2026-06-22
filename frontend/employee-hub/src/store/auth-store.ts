@@ -1,239 +1,75 @@
-import { create } from "zustand";
-import { persist } from "zustand/middleware";
-import { api } from "@/lib/api";
-
-let rehydrateResolve: (() => void) | null = null;
-const rehydratePromise = new Promise<void>((resolve) => {
-  rehydrateResolve = resolve;
-});
-
-export function waitForAuthRehydration() {
-  return rehydratePromise;
-}
-
-function parseStoredAuth(raw: string | null) {
-  try {
-    const parsed = raw ? JSON.parse(raw) : null;
-    const state = parsed?.state ?? {};
-
-    return {
-      user: state.user ?? null,
-      accessToken: state.accessToken ?? null,
-      refreshToken: state.refreshToken ?? null,
-      isAuthenticated: Boolean(state.isAuthenticated),
-    };
-  } catch {
-    return {
-      user: null,
-      accessToken: null,
-      refreshToken: null,
-      isAuthenticated: false,
-    };
-  }
-}
-
-function syncAuthFromStorage() {
-  if (typeof window === "undefined") return;
-
-  const raw = localStorage.getItem("nimbus-auth-storage");
-  const parsed = parseStoredAuth(raw);
-  const previousAuthState = useAuthStore.getState().isAuthenticated;
-
-  useAuthStore.setState({
-    user: parsed.user,
-    accessToken: parsed.accessToken,
-    refreshToken: parsed.refreshToken,
-    isAuthenticated: parsed.isAuthenticated,
-    isHydrated: true,
-  });
-
-  const currentPath = window.location.pathname;
-  const isAuthRoute = currentPath !== "/login" && currentPath !== "/forgot-password";
-
-  if (!parsed.isAuthenticated && previousAuthState && isAuthRoute) {
-    window.location.href = "/login";
-    return;
-  }
-
-  if (parsed.isAuthenticated && !previousAuthState && (currentPath === "/login" || currentPath === "/")) {
-    window.location.href = "/dashboard";
-    return;
-  }
-}
-
-let crossTabAuthSyncInitialized = false;
-
-function initCrossTabAuthSync() {
-  if (typeof window === "undefined" || crossTabAuthSyncInitialized) return;
-
-  crossTabAuthSyncInitialized = true;
-
-  window.addEventListener("storage", (event) => {
-    if (event.key !== "nimbus-auth-storage") return;
-    syncAuthFromStorage();
-  });
-}
-
-export interface User {
-  id: number;
-  username: string;
-  email: string;
-  role: 'admin' | 'manager' | 'employee';
-}
+import { create } from 'zustand';
+import { login as apiLogin, logout as apiLogout } from '@/api/auth';
+import { tokenStorage, type StoredUser } from '@/api/tokenStorage';
+import { ApiRequestError, AUTH_EXPIRED_EVENT } from '@/api/client';
 
 interface AuthState {
-  user: User | null;
-  accessToken: string | null;
-  refreshToken: string | null;
+  user: StoredUser | null;
   isAuthenticated: boolean;
-  isHydrated: boolean;
-  login: (identity: string, password: string) => Promise<{ ok: boolean; error?: string }>;
+  isInitialized: boolean;
+  login: (username: string, password: string) => Promise<{ ok: boolean; error?: string }>;
   logout: () => Promise<void>;
-  initialize: () => Promise<void>;
+  /** Called on mount and on cross-tab storage events to sync state from localStorage. */
+  syncFromStorage: () => void;
 }
 
-function isTokenExpired(token: string): boolean {
-  if (typeof window === "undefined") return true; // SSR safety
-  try {
-    const payload = JSON.parse(atob(token.split(".")[1]));
-    return payload.exp * 1000 < Date.now() + 30_000;
-  } catch {
-    return true;
-  }
-}
+export const useAuthStore = create<AuthState>((set, get) => ({
+  user: tokenStorage.getUser(),
+  isAuthenticated: !!tokenStorage.getAccess(),
+  isInitialized: false,
 
-export const useAuthStore = create<AuthState>()(
-  persist(
-    (set, get) => ({
-      user: null,
-      accessToken: null,
-      refreshToken: null,
-      isAuthenticated: false,
-      isHydrated: false, // never persisted — always starts false on page load
-
-      initialize: async () => {
-        console.log("INITIALIZE CALLED");
-
-        const { accessToken, refreshToken, isAuthenticated } = get();
-
-        console.log("STORE STATE", {
-          accessToken,
-          refreshToken,
-          isAuthenticated,
-        });
-
-        // No refresh token = definitely not logged in
-        if (!refreshToken) {
-          set({ isHydrated: true, isAuthenticated: false });
-          return;
-        }
-
-        // Access token still valid — restore session immediately
-        if (accessToken && !isTokenExpired(accessToken)) {
-          set({ isAuthenticated: true, isHydrated: true });
-          return;
-        }
-
-        // Access token expired — silently refresh it
-        try {
-          const res = await api.post("/api/login/refresh/", {
-            refresh: refreshToken,
-          });
-          set({
-            accessToken: res.data.access,
-            isAuthenticated: true,
-            isHydrated: true,
-          });
-        } catch {
-          // Refresh token expired too — clear everything
-          set({
-            user: null,
-            accessToken: null,
-            refreshToken: null,
-            isAuthenticated: false,
-            isHydrated: true,
-          });
-        }
-      },
-
-      login: async (identity, password) => {
-        try {
-          const response = await api.post("/api/login/", {
-            username: identity,
-            password: password,
-          });
-
-          if (response.data && response.data.error) {
-            return { ok: false, error: response.data.error };
-          }
-
-          const { access, refresh, user } = response.data;
-
-          if (!access || !user) {
-            return { ok: false, error: "Invalid credentials" };
-          }
-
-          set({
-            accessToken: access,
-            refreshToken: refresh,
-            user: {
-              id: user.id,
-              username: user.username,
-              email: user.email,
-              role: (user.role?.toLowerCase() ?? 'employee') as User['role'],
-            },
-            isAuthenticated: true,
-            isHydrated: true,
-          });
-
-          return { ok: true };
-        } catch (error: any) {
-          const serverError =
-            error.response?.data?.detail ||
-            error.response?.data?.error ||
-            "Invalid credentials";
-          return { ok: false, error: serverError };
-        }
-      },
-
-      logout: async () => {
-        try {
-          const refreshToken = get().refreshToken;
-          if (refreshToken) {
-            await api.post("/api/logout/", { refresh: refreshToken });
-          }
-        } catch {
-          // Already expired — still clear local state
-        } finally {
-          set({
-            user: null,
-            accessToken: null,
-            refreshToken: null,
-            isAuthenticated: false,
-            isHydrated: true,
-          });
-        }
-      },
-    }),
-    {
-      name: "nimbus-auth-storage",
-
-      partialize: (state) => ({
-        user: state.user,
-        accessToken: state.accessToken,
-        refreshToken: state.refreshToken,
-        isAuthenticated: state.isAuthenticated,
-      }),
-
-      onRehydrateStorage: () => async (state) => {
-        // Use store's getState() instead of the closure's get()
-        // since onRehydrateStorage is defined outside the (set, get) closure
-        await useAuthStore.getState().initialize();
-        rehydrateResolve?.();
-      },
+  login: async (username, password) => {
+    try {
+      const data = await apiLogin({ username, password });
+      set({ user: data.user, isAuthenticated: true });
+      return { ok: true };
+    } catch (err) {
+      if (err instanceof ApiRequestError) {
+        return { ok: false, error: err.data.error ?? err.data.detail ?? 'Login failed' };
+      }
+      return { ok: false, error: 'Login failed' };
     }
-  )
-);
+  },
 
-initCrossTabAuthSync();
+  logout: async () => {
+    await apiLogout();
+    set({ user: null, isAuthenticated: false });
+  },
 
+  syncFromStorage: () => {
+    const access = tokenStorage.getAccess();
+    const user = tokenStorage.getUser();
+    const current = get();
+
+    const nowAuthenticated = !!access && !!user;
+
+    // Avoid redundant re-renders if nothing actually changed
+    if (current.isAuthenticated !== nowAuthenticated || current.user?.id !== user?.id) {
+      set({ user: nowAuthenticated ? user : null, isAuthenticated: nowAuthenticated });
+    }
+
+    if (!current.isInitialized) {
+      set({ isInitialized: true });
+    }
+  },
+}));
+
+/**
+ * Cross-tab sync: localStorage writes in one tab fire a 'storage' event in
+ * OTHER tabs (not the originating tab). When tokens are cleared (logout) or
+ * set (login) in tab A, tab B picks it up here and updates its store —
+ * route guards then redirect accordingly.
+ */
+if (typeof window !== 'undefined') {
+  // Other tabs: localStorage changes (login/logout elsewhere)
+  window.addEventListener('storage', (event) => {
+    if (event.key === 'access_token' || event.key === 'auth_user' || event.key === 'refresh_token' || event.key === null) {
+      useAuthStore.getState().syncFromStorage();
+    }
+  });
+
+  // Same tab: refresh token expired during an API call
+  window.addEventListener(AUTH_EXPIRED_EVENT, () => {
+    useAuthStore.getState().syncFromStorage();
+  });
+}

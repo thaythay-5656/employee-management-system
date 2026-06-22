@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { Plus, Pin, Trash2 } from "lucide-react";
+import { Plus, Trash2, Edit2 } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { PageHeader } from "@/components/layout/page-header";
@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -17,26 +16,109 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { useDataStore } from "@/store/data-store";
 import { useAuthStore } from "@/store/auth-store";
+
+import {
+  useAnnouncements,
+  useCreateAnnouncement,
+  useUpdateAnnouncement,
+  useDeleteAnnouncement,
+} from "@/api/queries/useAnnouncements";
+import type { Announcement } from "@/types/api";
 
 export const Route = createFileRoute("/_authenticated/announcements")({
   component: AnnouncementsPage,
 });
 
+type FormState = { title: string; content: string };
+const emptyForm: FormState = { title: "", content: "" };
+
 function AnnouncementsPage() {
-  const { announcements, addAnnouncement, removeAnnouncement } = useDataStore();
   const user = useAuthStore((s) => s.user);
   const canManage = user?.role === "admin" || user?.role === "manager";
 
-  const [open, setOpen] = useState(false);
-  const [title, setTitle] = useState("");
-  const [body, setBody] = useState("");
-  const [pinned, setPinned] = useState(false);
+  // NOTE: AnnouncementViewSet currently requires IsManagerOrAdmin for ALL
+  // actions, including list/retrieve. If you haven't relaxed this on the
+  // backend yet, employees will get a 403 here.
+  const { data: announcements = [], isLoading, isError } = useAnnouncements();
 
-  const sorted = [...announcements].sort(
-    (a, b) => Number(b.pinned) - Number(a.pinned) || b.createdAt.localeCompare(a.createdAt),
-  );
+  const createAnnouncement = useCreateAnnouncement();
+  const deleteAnnouncement = useDeleteAnnouncement();
+
+  const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<Announcement | null>(null);
+  const [form, setForm] = useState<FormState>(emptyForm);
+
+  const updateAnnouncement = useUpdateAnnouncement(editing?.id ?? 0);
+
+  const sorted = [...announcements].sort((a, b) => b.created_at.localeCompare(a.created_at));
+
+  const onOpenChange = (next: boolean) => {
+    setOpen(next);
+    if (!next) {
+      setEditing(null);
+      setForm(emptyForm);
+    }
+  };
+
+  const onAddNew = () => {
+    setEditing(null);
+    setForm(emptyForm);
+    setOpen(true);
+  };
+
+  const onEdit = (a: Announcement) => {
+    setEditing(a);
+    setForm({ title: a.title, content: a.content });
+    setOpen(true);
+  };
+
+  const onSave = () => {
+    if (!form.title.trim() || !form.content.trim()) {
+      toast.error("Fill all fields");
+      return;
+    }
+
+    if (editing) {
+      updateAnnouncement.mutate(form, {
+        onSuccess: () => {
+          toast.success("Announcement updated");
+          onOpenChange(false);
+        },
+        onError: () => toast.error("Failed to update announcement"),
+      });
+    } else {
+      createAnnouncement.mutate(form, {
+        onSuccess: () => {
+          toast.success("Posted");
+          onOpenChange(false);
+        },
+        onError: () => toast.error("Failed to post announcement"),
+      });
+    }
+  };
+
+  const handleDelete = (a: Announcement) => {
+    deleteAnnouncement.mutate(a.id, {
+      onSuccess: () => toast.success("Deleted"),
+      onError: () => toast.error("Failed to delete announcement"),
+    });
+  };
+
+  if (isLoading) {
+    return <div className="text-sm text-muted-foreground">Loading announcements…</div>;
+  }
+
+  if (isError) {
+    return (
+      <div className="space-y-6">
+        <PageHeader title="Announcements" description="Company news, HR notices, and updates." />
+        <div className="glass rounded-xl p-8 text-center text-sm text-muted-foreground">
+          You don't have access to announcements yet. Contact an admin if this seems wrong.
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -44,36 +126,32 @@ function AnnouncementsPage() {
         title="Announcements"
         description="Company news, HR notices, and updates."
         actions={
-          canManage && (
-            <Dialog open={open} onOpenChange={setOpen}>
+          canManage ? (
+            <Dialog open={open} onOpenChange={onOpenChange}>
               <DialogTrigger asChild>
-                <Button><Plus className="h-4 w-4 mr-1" /> New announcement</Button>
+                <Button onClick={onAddNew}><Plus className="h-4 w-4 mr-1" /> New announcement</Button>
               </DialogTrigger>
               <DialogContent>
-                <DialogHeader><DialogTitle>Create announcement</DialogTitle></DialogHeader>
+                <DialogHeader><DialogTitle>{editing ? "Edit announcement" : "Create announcement"}</DialogTitle></DialogHeader>
                 <div className="space-y-4">
-                  <div className="space-y-2"><Label>Title</Label><Input value={title} onChange={(e) => setTitle(e.target.value)} /></div>
-                  <div className="space-y-2"><Label>Message</Label><Textarea rows={4} value={body} onChange={(e) => setBody(e.target.value)} /></div>
-                  <label className="flex items-center gap-2 text-sm">
-                    <input type="checkbox" checked={pinned} onChange={(e) => setPinned(e.target.checked)} />
-                    Pin this announcement
-                  </label>
+                  <div className="space-y-2">
+                    <Label>Title</Label>
+                    <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Message</Label>
+                    <Textarea rows={4} value={form.content} onChange={(e) => setForm({ ...form, content: e.target.value })} />
+                  </div>
                 </div>
                 <DialogFooter>
-                  <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-                  <Button
-                    onClick={() => {
-                      if (!title || !body) return toast.error("Fill all fields");
-                      addAnnouncement({ title, body, pinned, author: user?.email ?? "HR" });
-                      setTitle(""); setBody(""); setPinned(false);
-                      setOpen(false);
-                      toast.success("Posted");
-                    }}
-                  >Post</Button>
+                  <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+                  <Button onClick={onSave} disabled={createAnnouncement.isPending || updateAnnouncement.isPending}>
+                    {editing ? "Save changes" : "Post"}
+                  </Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
-          )
+          ) : undefined
         }
       />
 
@@ -86,24 +164,26 @@ function AnnouncementsPage() {
             transition={{ delay: i * 0.03 }}
             className="glass rounded-xl p-5 relative"
           >
-            {a.pinned && (
-              <Badge className="absolute top-3 right-3 gap-1" variant="default">
-                <Pin className="h-3 w-3" /> Pinned
-              </Badge>
-            )}
             <h3 className="font-semibold pr-16">{a.title}</h3>
-            <p className="text-sm text-muted-foreground mt-2">{a.body}</p>
+            <p className="text-sm text-muted-foreground mt-2 whitespace-pre-wrap">{a.content}</p>
             <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
-              <span>{a.author} · {new Date(a.createdAt).toLocaleDateString()}</span>
+              <span>{new Date(a.created_at).toLocaleDateString()}</span>
               {canManage && (
-                <Button variant="ghost" size="icon" className="h-7 w-7"
-                  onClick={() => { removeAnnouncement(a.id); toast.success("Deleted"); }}>
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
+                <div className="flex gap-1">
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onEdit(a)}>
+                    <Edit2 className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDelete(a)}>
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
               )}
             </div>
           </motion.div>
         ))}
+        {sorted.length === 0 && (
+          <div className="text-sm text-muted-foreground col-span-full text-center py-12">No announcements yet.</div>
+        )}
       </div>
     </div>
   );

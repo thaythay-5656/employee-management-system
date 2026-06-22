@@ -30,8 +30,6 @@ const navByRole: Record<'admin' | 'manager' | 'employee', NavItem[]> = {
     { to: "/leave", label: "Leave Requests", icon: PalmtreeIcon },
     { to: "/payroll", label: "Payroll", icon: Wallet },
     { to: "/announcements", label: "Announcements", icon: Megaphone },
-    { to: "/users", label: "Users & Roles", icon: ShieldCheck },
-    { to: "/audit-log", label: "Audit Log", icon: ScrollText },
     { to: "/settings", label: "Settings", icon: Settings },
   ],
   manager: [
@@ -40,15 +38,15 @@ const navByRole: Record<'admin' | 'manager' | 'employee', NavItem[]> = {
     { to: "/attendance", label: "Team Attendance", icon: CalendarCheck },
     { to: "/leave", label: "Leave Approvals", icon: PalmtreeIcon },
     { to: "/announcements", label: "Announcements", icon: Megaphone },
-    { to: "/profile", label: "Profile", icon: UserCircle },
+    { to: "/settings", label: "Settings", icon: Settings },
   ],
   employee: [
     { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
     { to: "/attendance", label: "My Attendance", icon: CalendarCheck },
     { to: "/leave", label: "My Leave", icon: PalmtreeIcon },
-    { to: "/payroll", label: "Payslips", icon: Wallet },
+    { to: "/payroll", label: "Payroll", icon: Wallet },
     { to: "/announcements", label: "Announcements", icon: Megaphone },
-    { to: "/profile", label: "Profile", icon: UserCircle },
+    { to: "/settings", label: "Settings", icon: Settings },
   ],
 };
 

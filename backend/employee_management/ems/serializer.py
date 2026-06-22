@@ -2,69 +2,71 @@ from rest_framework import serializers
 from .models import *
 from django.contrib.auth.models import User
 
+
 class UserSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(required=False, allow_blank=True, write_only=True)
+
     class Meta:
         model = User
         fields = ['username', 'password', 'first_name', 'last_name', 'email', 'is_active']
 
+    def get_extra_kwargs(self):
+        extra_kwargs = super().get_extra_kwargs()
+        # When updating, exclude the current user from the unique username check
+        if self.instance:
+            extra_kwargs.setdefault('username', {})
+            extra_kwargs['username']['validators'] = []
+        return extra_kwargs
+
+
 class EmployeeSerializer(serializers.ModelSerializer):
-    user = UserSerializer() # Tells serializer to expect a dictionary layout
+    user = UserSerializer()
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.partial:
+            user_instance = getattr(self.instance, 'user', None)
+            self.fields['user'] = UserSerializer(instance=user_instance, partial=True)
 
     class Meta:
         model = Employee
         fields = '__all__'
 
     def create(self, validated_data):
-        # 1. Pop the user dictionary out of the employee data payload
         user_data = validated_data.pop('user')
-        
-        # 2. Explicitly build the core Django User row first
-        user = User.objects.create_user(**user_data)
-        
-        # 3. Create the Employee profile linked to that new user instance row
-        employee = Employee.objects.create(user=user, **validated_data)
-        return employee
-    
+        password = user_data.pop('password', None) or None
+        user = User.objects.create_user(password=password, **user_data)
+        return Employee.objects.create(user=user, **validated_data)
+
     def update(self, instance, validated_data):
-        # 1. Pop the nested user data out safely
         user_data = validated_data.pop('user', None)
-        
-        # 2. Update the User instance manually if data was provided
+
         if user_data:
             user_instance = instance.user
-            
-            # Safely pop the password from inside the IF block
             password = user_data.pop('password', None)
-            
-            # Update standard user fields (username, email, etc.)
+
             for attr, value in user_data.items():
                 setattr(user_instance, attr, value)
-            
-            # Encrypt the password if it was provided
+
             if password:
                 user_instance.set_password(password)
-            
-            # Save the user just ONCE here
+
             user_instance.save()
 
-        # 3. Update the remaining Employee fields normally
         return super().update(instance, validated_data)
-    
-class SelfUpdateEmployeeSerializer(serializers.ModelSerializer):
-    user = UserSerializer()
-    """Serializer for employees updating their own record — restricted fields are read-only."""
 
-    class Meta:
-        model = Employee
-        fields = '__all__'
-        read_only_fields = ['role', 'position', 'department', 'salary', 'hire_date', 'status']
-    
-class ManagerUpdateEmployeeSerializer(serializers.ModelSerializer):
-    user = UserSerializer()
+
+class SelfUpdateEmployeeSerializer(EmployeeSerializer):
+    """Employees updating their own record — restricted fields are read-only."""
+
+    class Meta(EmployeeSerializer.Meta):
+        read_only_fields = ['role', 'position', 'department', 'salary', 'hire_date']
+
+
+class ManagerUpdateEmployeeSerializer(EmployeeSerializer):
     """Managers can update employees but cannot change role."""
-    class Meta:
-        model = Employee
-        fields = '__all__'
+
+    class Meta(EmployeeSerializer.Meta):
         read_only_fields = ['role', 'hire_date', 'salary']
 
 
@@ -98,15 +100,21 @@ class LeaveSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
+class AnnouncementSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Announcement
+        fields = '__all__'
+
+
 class LoginSerializer(serializers.Serializer):
     username = serializers.CharField(
-        write_only=True, 
+        write_only=True,
         required=True,
         error_messages={"blank": "Username cannot be empty."}
     )
     password = serializers.CharField(
-        write_only=True, 
+        write_only=True,
         required=True,
-        style={'input_type': 'password'}, # Hides input in the browsable API
+        style={'input_type': 'password'},
         error_messages={"blank": "Password cannot be empty."}
     )
