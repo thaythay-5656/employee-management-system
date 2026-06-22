@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - DEBUG=1
+      - DB_ENGINE=django.db.backends.postgresql
+      - DB_NAME=EMSDB
+      - DB_USER=postgres
+      - DB_PASSWORD=emsProjectFinal
+      - DB_HOST=database-ems.c96qsmskwzwb.ap-southeast-2.rds.amazonaws.com
+      - DB_PORT=5432
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "8080:5173"
+    depends_on:
+      - backend
