@@ -6,15 +6,15 @@ RUN npm install --legacy-peer-deps
 COPY employee-hub/ .
 RUN npm run build
 
-RUN ls -la && ls -la dist/
-
 # Stage 2: Serve via Nginx
 FROM nginx:alpine
 
 # 1. Overwrite default config
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# 2. Point directly to the nested client build folder
+RUN rm -rf /usr/share/nginx/html/*
+
+# 3. Copy your fresh React client build files into the empty directory
 COPY --from=builder /app/dist/client /usr/share/nginx/html
 
 EXPOSE 80
