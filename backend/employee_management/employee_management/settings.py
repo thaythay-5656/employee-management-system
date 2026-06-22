@@ -95,15 +95,12 @@ WSGI_APPLICATION = 'employee_management.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'EMSDB',
-        'USER': 'postgres',
-        'PASSWORD': 'emsProjectFinal',
-        'HOST': 'database-ems.c96qsmskwzwb.ap-southeast-2.rds.amazonaws.com',
-        'PORT': '5432',
-        'OPTIONS': {
-            'sslmode': 'require',
-        },
+        'ENGINE': os.environ.get('DB_ENGINE', 'django.db.backends.postgresql'),
+        'NAME': os.environ.get('DB_NAME', 'EMSDB'),
+        'USER': os.environ.get('DB_USER', 'postgres'),
+        'PASSWORD': os.environ.get('DB_PASSWORD', 'emsProjectFinal'),
+        'HOST': os.environ.get('DB_HOST', 'database-ems.c96qsmskwzwb.ap-southeast-2.rds.amazonaws.com'),
+        'PORT': os.environ.get('DB_PORT', '5432'),
     }
 }
 # DATABASES = {
