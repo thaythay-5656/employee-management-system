@@ -17,14 +17,14 @@ jobs:
           python-version: '3.12'
 
       - name: Install Backend Dependencies
-              run: |
-                cd backend/employee_management
-                pip install -r requirements.txt
+        run: |
+          cd backend/employee_management
+          pip install -r requirements.txt
 
-            - name: Run Django Tests
-              run: |
-                cd backend/employee_management
-                python manage.py test
+      - name: Run Django Tests
+        run: |
+          cd backend/employee_management
+          python manage.py test
 
   build-and-deploy:
     needs: test-and-verify
