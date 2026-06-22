@@ -2,11 +2,10 @@ version: '3.8'
 
 services:
   backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    image: seavthay/ems-backend:latest
     ports:
       - "8000:8000"
+    restart: always
     environment:
       - DEBUG=1
       - DB_ENGINE=django.db.backends.postgresql
@@ -17,10 +16,9 @@ services:
       - DB_PORT=5432
 
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
+    image: seavthay/ems-frontend:latest
     ports:
-      - "8080:5173"
+      - "80:80"
+    restart: always
     depends_on:
       - backend
