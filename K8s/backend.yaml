@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ems-backend
+  namespace: ems
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: ems-backend
+  template:
+    metadata:
+      labels:
+        app: ems-backend
+    spec:
+      containers:
+        - name: backend
+          image: ghcr.io/soysanny/ems-backend:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: ems-config
+            - secretRef:
+                name: ems-secret
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: 8000
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /metrics
+              port: 8000
+            initialDelaySeconds: 40
+            periodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ems-backend
+  namespace: ems
+spec:
+  selector:
+    app: ems-backend
+  ports:
+    - port: 8000
+      targetPort: 8000
+  type: ClusterIP

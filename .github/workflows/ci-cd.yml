@@ -147,7 +147,7 @@ jobs:
       - name: Deploy to production server
         uses: appleboy/ssh-action@v1
         with:
-          host: ${{ secrets.PROD_HOST }}
+          host: ${{ secrets.PROD_HOST }}  # - > Production Host
           username: ${{ secrets.PROD_USER }}
           key: ${{ secrets.PROD_SSH_KEY }}
           script: |
