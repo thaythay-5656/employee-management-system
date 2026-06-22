@@ -6,6 +6,8 @@ RUN npm install --legacy-peer-deps
 COPY employee-hub/ .
 RUN npm run build
 
+RUN ls -la && ls -la dist/
+
 # Stage 2: Serve via Nginx
 FROM nginx:alpine
 
