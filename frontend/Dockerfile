@@ -8,8 +8,12 @@ RUN npm run build
 
 # Stage 2: Serve via Nginx
 FROM nginx:alpine
-# Add this line right here to overwrite the default config:
+
+# 1. Overwrite default config
 COPY nginx.conf /etc/nginx/conf.d/default.conf
-COPY --from=builder /app/dist /usr/share/nginx/html
+
+# 2. Point directly to the nested client build folder
+COPY --from=builder /app/dist/client /usr/share/nginx/html
+
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
