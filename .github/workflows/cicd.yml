@@ -50,9 +50,20 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: ./frontend
-          file: ./frontend/Dockerfile  # Uses your single, unified Dockerfile
+          file: ./frontend/Dockerfile
           push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/ems-frontend:latest
+
+      # 🌟 NEW STEP: Automatically copies docker-compose.yml to EC2 root app directory
+      - name: Copy docker-compose to EC2
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "docker-compose.yml"
+          target: "~/app"
+          overwrite: true
 
       - name: Deploy to EC2 via SSH
         uses: appleboy/ssh-action@v1.0.3
@@ -62,15 +73,7 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             cd ~/app
-            
-            # 1. Stop existing containers cleanly
             docker compose down
-            
-            # 2. Force clean tracking by pulling down fresh images
             docker compose pull
-            
-            # 3. Spin up the updated configuration
             docker compose up -d
-            
-            # 4. Wipe out dead dangling image caches to preserve disk space
             docker image prune -af

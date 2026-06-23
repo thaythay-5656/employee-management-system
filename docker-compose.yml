@@ -3,6 +3,7 @@ version: '3.8'
 services:
   backend:
     image: seavthay/ems-backend:latest
+    container_name: ems-backend
     ports:
       - "8000:8000"
     restart: always
@@ -17,6 +18,13 @@ services:
 
   frontend:
     image: seavthay/ems-frontend:latest
+    container_name: ems-frontend
     ports:
       - "80:3000"
     restart: always
+    environment:
+      - PORT=3000
+      - HOST=0.0.0.0
+      - NODE_ENV=production
+    depends_on:
+      - backend
