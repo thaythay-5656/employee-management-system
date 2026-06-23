@@ -14,9 +14,9 @@ WORKDIR /app
 COPY employee-hub/package*.json ./
 RUN npm install --legacy-peer-deps
 
-# 🌟 FIX: Copy both compiled build folders from Stage 1
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/.output ./.output
+# 🌟 FIX: Point to the nested employee-hub folder for the build artifacts
+COPY --from=builder /app/employee-hub/dist ./dist
+COPY --from=builder /app/employee-hub/.output ./.output
 
 EXPOSE 3000
 
