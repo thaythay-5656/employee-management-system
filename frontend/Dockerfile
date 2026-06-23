@@ -6,18 +6,19 @@ RUN npm install --legacy-peer-deps
 COPY employee-hub/ .
 RUN npm run build
 
-# Stage 2: Run the TanStack Start Production Server
+# Stage 2: Run the Production Vinxi Server
 FROM node:22-slim
 WORKDIR /app
 
-# Copy packages and install production dependencies
+# Copy packages and install dependencies
 COPY employee-hub/package*.json ./
-RUN npm install --production --legacy-peer-deps
+RUN npm install --legacy-peer-deps
 
-# Copy the entire compiled build output (both client and server assets)
+# 🌟 FIX: Copy both compiled build folders from Stage 1
 COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/.output ./.output
 
 EXPOSE 3000
 
-# Start the built framework production server directly
-CMD ["node", "dist/server/server.js"]
+# Run Vinxi using the local node_modules binary safely
+CMD ["npx", "vinxi", "start", "--port", "3000", "--host", "0.0.0.0"]
