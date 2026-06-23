@@ -188,7 +188,12 @@ if not SECRET_KEY:
 
 DEBUG = os.environ.get("DEBUG", "False").lower() in ("true", "1", "yes")
 
-ALLOWED_HOSTS = ["localhost", "127.0.0.1", "backend"]
+_allowed_hosts = os.environ.get("ALLOWED_HOSTS")
+ALLOWED_HOSTS = (
+    [host.strip() for host in _allowed_hosts.split(",") if host.strip()]
+    if _allowed_hosts
+    else ["localhost", "127.0.0.1", "backend"]
+)
 
 # ── Application definition ────────────────────────────────────────────────────
 INSTALLED_APPS = [
@@ -270,12 +275,19 @@ REST_FRAMEWORK = {
 }
 
 # ── CORS ──────────────────────────────────────────────────────────────────────
-CORS_ALLOWED_ORIGINS = [
+_cors_allowed_origins = os.environ.get("CORS_ALLOWED_ORIGINS")
+CORS_ALLOWED_ORIGINS = (
+    [origin.strip() for origin in _cors_allowed_origins.split(",") if origin.strip()]
+    if _cors_allowed_origins
+    else [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
     "http://localhost:8080",
     "http://127.0.0.1:8080",
-]
+    "http://localhost:8081",
+    "http://127.0.0.1:8081",
+    ]
+)
 
 # ── Password validation ───────────────────────────────────────────────────────
 AUTH_PASSWORD_VALIDATORS = [

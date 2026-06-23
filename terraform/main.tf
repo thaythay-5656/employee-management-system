@@ -151,6 +151,85 @@ resource "aws_instance" "ems_app" {
   tags = { Name = "ems-app-${var.environment}" }
 }
 
+# CloudWatch Logs for application and deployment logs.
+resource "aws_cloudwatch_log_group" "ems_app" {
+  name              = "/ems/${var.environment}/app"
+  retention_in_days = 14
+
+  tags = {
+    Name        = "ems-app-logs-${var.environment}"
+    Environment = var.environment
+  }
+}
+
+# CloudWatch alarm for high EC2 CPU usage.
+resource "aws_cloudwatch_metric_alarm" "ems_high_cpu" {
+  alarm_name          = "ems-${var.environment}-high-cpu"
+  alarm_description   = "Alerts when EMS EC2 CPU stays above 80 percent."
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = 2
+  metric_name         = "CPUUtilization"
+  namespace           = "AWS/EC2"
+  period              = 300
+  statistic           = "Average"
+  threshold           = 80
+  treat_missing_data  = "notBreaching"
+
+  dimensions = {
+    InstanceId = aws_instance.ems_app.id
+  }
+
+  tags = {
+    Name        = "ems-high-cpu-${var.environment}"
+    Environment = var.environment
+  }
+}
+
+resource "aws_cloudwatch_dashboard" "ems" {
+  dashboard_name = "ems-${var.environment}-overview"
+
+  dashboard_body = jsonencode({
+    widgets = [
+      {
+        type   = "metric"
+        x      = 0
+        y      = 0
+        width  = 12
+        height = 6
+        properties = {
+          title   = "EMS EC2 CPU Utilization"
+          region  = var.aws_region
+          view    = "timeSeries"
+          stacked = false
+          metrics = [
+            ["AWS/EC2", "CPUUtilization", "InstanceId", aws_instance.ems_app.id]
+          ]
+          period = 300
+          stat   = "Average"
+        }
+      },
+      {
+        type   = "metric"
+        x      = 12
+        y      = 0
+        width  = 12
+        height = 6
+        properties = {
+          title   = "EMS RDS Free Storage"
+          region  = var.aws_region
+          view    = "timeSeries"
+          stacked = false
+          metrics = [
+            ["AWS/RDS", "FreeStorageSpace", "DBInstanceIdentifier", aws_db_instance.ems_postgres.identifier]
+          ]
+          period = 300
+          stat   = "Average"
+        }
+      }
+    ]
+  })
+}
+
 # ── RDS PostgreSQL ────────────────────────────────────────────────────────────
 resource "aws_db_subnet_group" "ems_db_subnet" {
   name       = "ems-db-subnet-${var.environment}"
@@ -172,4 +251,27 @@ resource "aws_db_instance" "ems_postgres" {
   skip_final_snapshot    = true
   publicly_accessible    = false
   tags                   = { Name = "ems-rds-${var.environment}" }
+}
+
+# CloudWatch alarm for low RDS free storage.
+resource "aws_cloudwatch_metric_alarm" "ems_rds_low_storage" {
+  alarm_name          = "ems-${var.environment}-rds-low-storage"
+  alarm_description   = "Alerts when EMS RDS free storage falls below 2 GB."
+  comparison_operator = "LessThanThreshold"
+  evaluation_periods  = 1
+  metric_name         = "FreeStorageSpace"
+  namespace           = "AWS/RDS"
+  period              = 300
+  statistic           = "Average"
+  threshold           = 2147483648
+  treat_missing_data  = "notBreaching"
+
+  dimensions = {
+    DBInstanceIdentifier = aws_db_instance.ems_postgres.identifier
+  }
+
+  tags = {
+    Name        = "ems-rds-low-storage-${var.environment}"
+    Environment = var.environment
+  }
 }
