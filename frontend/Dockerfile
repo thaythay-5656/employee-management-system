@@ -19,5 +19,4 @@ COPY --from=builder /app/employee-hub/dist ./dist
 
 EXPOSE 3000
 
-# 🌟 FIX: Run the standalone server script directly with Node
-CMD ["node", "dist/server/server.js"]
+CMD ["node", "--experimental-modules", "dist/server/server.js"]
