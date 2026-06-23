@@ -21,7 +21,7 @@ kubectl get all -n ems
 For local access if LoadBalancer does not assign an external IP:
 
 ```powershell
-kubectl port-forward svc/ems-frontend 8080:8080 -n ems
+kubectl port-forward svc/ems-frontend 8081:8080 -n ems
 kubectl port-forward svc/prometheus 9090:9090 -n ems
 kubectl port-forward svc/grafana 3001:3000 -n ems
 ```

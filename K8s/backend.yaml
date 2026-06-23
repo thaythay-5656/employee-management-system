@@ -25,14 +25,12 @@ spec:
             - secretRef:
                 name: ems-secret
           readinessProbe:
-            httpGet:
-              path: /metrics
+            tcpSocket:
               port: 8000
             initialDelaySeconds: 20
             periodSeconds: 10
           livenessProbe:
-            httpGet:
-              path: /metrics
+            tcpSocket:
               port: 8000
             initialDelaySeconds: 40
             periodSeconds: 20
