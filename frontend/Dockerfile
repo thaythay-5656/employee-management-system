@@ -1,18 +1,26 @@
-FROM node:22-slim
-
+# Stage 1: Build the bundle
+FROM node:22-slim AS builder
 WORKDIR /app
 
-# Copy package requirements
 COPY employee-hub/package*.json ./
 RUN npm install --legacy-peer-deps
 
-# Copy all source files
 COPY employee-hub/ .
-
-# This popoves your dist/ folder cleanly
 RUN npm run build
+
+# Stage 2: Production runtime Environment
+FROM node:22-slim
+WORKDIR /app
+
+ENV NODE_ENV=production
+ENV PORT=3000
+ENV HOST=0.0.0.0
+
+# Copy production artifacts from the builder stage
+COPY --from=builder /app/.output ./.output
+COPY --from=builder /app/package*.json ./
 
 EXPOSE 3000
 
-# 🌟 FIX: Use vinxi to natively start the production build artifact in dist/
-CMD ["npx", "vinxi", "start"]
+# The standard deployment entrypoint for TanStack Start
+CMD ["node", ".output/server/index.mjs"]
